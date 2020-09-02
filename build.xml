@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="adam_distrEnv" default="jar" xmlns:if="ant:if" xmlns:unless="ant:unless">
+	<!-- For building the standalone version: the jars in libs.res have to start with ${libfolder}/ and 
+         the classes have to start with ${dependenciesfolder}, or ${frameworkfolder}. -->
+
+<!--  %%%%%%%%%%%%%%%%%%%%%%%%%%%%% PROPERTIES %%%%%%%%%%%%%%%%%%%%%%%%%%% -->	
+	<dirname property="distrEnv.basedir" file="${ant.file.adam_distrEnv}"/>
+
+<!--  %%%%%%%%%%%%%%%%%%%%%%%%%%%%% IMPORTS %%%%%%%%%%%%%%%%%%%%%%%%%%% -->	
+    <property name="subproject.basedir" value="${distrEnv.basedir}"/>
+	<property file="${subproject.basedir}/build.properties" prefix="adam"/>
+    <!-- get the correct folder for the dependencies depending on whether we build it as the main project of as a dependency itselve -->
+    <available file="${adam.dependenciesfolder.asMainProject}/" type="dir" property="isMainProject"/>
+    <available file="${adam.dependenciesfolder.asDependency}" type="dir" property="isDependency"/>
+    <property if:set="isMainProject" name="dependenciesfolder" value="${adam.dependenciesfolder.asMainProject}"/>
+    <property if:set="isDependency" name="dependenciesfolder" value="${adam.dependenciesfolder.asDependency}"/>
+    <!-- now load the property file again to correctly expand the ${dependencyfolder}. Standard ant doesn't allow overwriting properties,
+        thus, we loaded it above with a prefix -->
+	<property file="${subproject.basedir}/build.properties"/>
+
+	<import file="${frameworkfolder}/build_macros.xml" optional="false"/>
+	<include file="${frameworkfolder}/build_targets.xml" as="distrEnv.fu" optional="false"/>
+
+<!--  %%%%%%%%%%%%%%%%%%%%%%%%%%%%% PATHs %%%%%%%%%%%%%%%%%%%%%%%%%%% -->	
+
+	<union id="distrEnv.jar.res">    	
+<!--			<zipfileset includes="**/*.class" src="${mainfolder}/lib/apt/apt.jar"/>
+			<zipfileset includes="**/*.stg" src="${mainfolder}/lib/apt/apt.jar"/>		
+			<zipfileset includes="**/*.class" src="${mainfolder}/logic/adam_logics.jar"/>-->
+<!--			<zipfileset includes="**/*.stg" src="${subproject.basedir}/../ds/adam_logics.jar"/>-->
+<!--			<zipfileset includes="**/*.class" src="${mainfolder}/lib/javaBDD/javabdd-1.0b2.jar"/>-->
+	</union>
+
+	<!--  %%%%%%%%%%%%%%%%%%%%%%%%%%%%% PROPERTIES %%%%%%%%%%%%%%%%%%%%%%%%%%% -->	
+	<target name="loadProperties">
+		<property file="${subproject.basedir}/build.properties"/>		
+	</target>
+
+<!--  %%%%%%%%%%%%%%%%%%%%%%%%%%%%% DELEGATES %%%%%%%%%%%%%%%%%%%%%%%%%%% -->	
+	<target name="test" depends="loadProperties" description="Runs all tests">
+		<antcall target="distrEnv.fu.test"/>
+	</target>
+	<target name="test-method" depends="loadProperties" description="Runs the tests of a specific method">
+		<antcall target="distrEnv.fu.test-method"/>
+	</target>
+	<target name="test-class" depends="loadProperties" description="Runs the tests of a specific class">
+		<antcall target="distrEnv.fu.test-class"/>
+	</target>
+	<target name="jar" depends="loadProperties" description="Builds a jar with all its dependencies">
+		<antcall target="distrEnv.fu.jar"/>
+	</target>
+	<target name="jar-standalone" depends="loadProperties" description="Builds a jar with all its dependencies">
+		<antcall target="distrEnv.fu.jar-standalone"/>
+	</target>
+	<target name="javadoc" depends="loadProperties" description="Creates the JavaDoc of this package.">
+		<antcall target="distrEnv.fu.javadoc"/>
+	</target>
+	<target name="clean" depends="loadProperties" description="Cleans all temporary files.">
+		<antcall target="distrEnv.fu.clean"/>
+	</target>
+	<target name="clean-all" depends="loadProperties" description="Cleans all temporary files including the reports">
+		<antcall target="distrEnv.fu.clean-all"/>
+	</target>
+</project>

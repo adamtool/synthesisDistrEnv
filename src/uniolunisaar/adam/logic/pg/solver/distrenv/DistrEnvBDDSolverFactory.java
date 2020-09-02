@@ -1,0 +1,73 @@
+package uniolunisaar.adam.logic.pg.solver.distrenv;
+
+import uniolunisaar.adam.exceptions.pg.NotSupportedGameException;
+import uniolunisaar.adam.exceptions.pg.SolvingException;
+import uniolunisaar.adam.ds.petrigame.PetriGame;
+import uniolunisaar.adam.ds.objectives.Buchi;
+import uniolunisaar.adam.ds.objectives.Condition;
+import uniolunisaar.adam.ds.objectives.Reachability;
+import uniolunisaar.adam.ds.objectives.Safety;
+import uniolunisaar.adam.ds.solver.distrenv.DistrEnvBDDSolvingObject;
+import uniolunisaar.adam.exceptions.pg.NoSuitableDistributionFoundException;
+import uniolunisaar.adam.exceptions.pnwt.NetNotSafeException;
+import uniolunisaar.adam.logic.pg.solver.LLSolverFactory;
+
+/**
+ *
+ * @author Manuel Gieseking
+ */
+public class DistrEnvBDDSolverFactory extends LLSolverFactory<DistrEnvBDDSolverOptions, DistrEnvBDDSolver<? extends Condition<?>>> {
+
+    private static DistrEnvBDDSolverFactory instance = null;
+
+    public static DistrEnvBDDSolverFactory getInstance() {
+        if (instance == null) {
+            instance = new DistrEnvBDDSolverFactory();
+        }
+        return instance;
+    }
+
+    private DistrEnvBDDSolverFactory() {
+
+    }
+
+    @Override
+    protected <W extends Condition<W>> DistrEnvBDDSolvingObject<W> createSolvingObject(PetriGame game, W winCon) throws NotSupportedGameException {
+        try {
+            return new DistrEnvBDDSolvingObject<>(game, winCon);
+        } catch (NetNotSafeException | NoSuitableDistributionFoundException ex) {
+            throw new NotSupportedGameException("Could not create solving object.", ex);
+        }
+    }
+
+    @Override
+    protected DistrEnvBDDSolver<Safety> getESafetySolver(PetriGame game, Safety con, DistrEnvBDDSolverOptions options) throws SolvingException {
+        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+    }
+
+    @Override
+    protected DistrEnvBDDSolver<Safety> getASafetySolver(PetriGame game, Safety con, DistrEnvBDDSolverOptions options) throws SolvingException {
+        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+    }
+
+    @Override
+    protected DistrEnvBDDSolver<Reachability> getEReachabilitySolver(PetriGame game, Reachability con, DistrEnvBDDSolverOptions options) throws SolvingException {
+        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+    }
+
+    @Override
+    protected DistrEnvBDDSolver<Reachability> getAReachabilitySolver(PetriGame game, Reachability con, DistrEnvBDDSolverOptions options) throws SolvingException {
+        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+    }
+
+    @Override
+    protected DistrEnvBDDSolver<Buchi> getEBuchiSolver(PetriGame game, Buchi con, DistrEnvBDDSolverOptions options) throws SolvingException {
+        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+    }
+
+    @Override
+    protected DistrEnvBDDSolver<Buchi> getABuchiSolver(PetriGame game, Buchi con, DistrEnvBDDSolverOptions options) throws SolvingException {
+        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+    }
+
+}
