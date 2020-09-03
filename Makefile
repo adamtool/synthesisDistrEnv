@@ -63,13 +63,13 @@ petrinetwithtransits: check_dependencies
 	ant -buildfile ./dependencies/framework/petrinetWithTransits/build.xml $(t)
 
 petrigames:
-	ant -buildfile ./petriGames/build.xml $(t)
+	ant -buildfile ./dependencies/synthesizer/petriGames/build.xml $(t)
 
 bdd: check_dependencies
-	ant -buildfile ./symbolicalgorithms/bddapproach/build.xml $(t)
+	ant -buildfile ./dependencies/synthesizer/symbolicalgorithms/bddapproach/build.xml $(t)
 
 mtbdd: check_dependencies
-	ant -buildfile ./symbolicalgorithms/mtbddapproach/build.xml $(t)
+	ant -buildfile ./dependencies/synthesizer/symbolicalgorithms/mtbddapproach/build.xml $(t)
 
 symbolic: bdd mtbdd
 
