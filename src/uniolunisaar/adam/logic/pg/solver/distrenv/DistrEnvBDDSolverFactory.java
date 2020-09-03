@@ -9,9 +9,11 @@ import uniolunisaar.adam.ds.objectives.Condition;
 import uniolunisaar.adam.ds.objectives.Reachability;
 import uniolunisaar.adam.ds.objectives.Safety;
 import uniolunisaar.adam.ds.solver.symbolic.bddapproach.distrenv.DistrEnvBDDSolvingObject;
+import uniolunisaar.adam.exceptions.pg.InvalidPartitionException;
 import uniolunisaar.adam.exceptions.pg.NoSuitableDistributionFoundException;
 import uniolunisaar.adam.exceptions.pnwt.NetNotSafeException;
 import uniolunisaar.adam.logic.pg.solver.LLSolverFactory;
+import uniolunisaar.adam.logic.pg.solver.distrenv.safety.DistrEnvBDDSafetySolverFactory;
 
 /**
  * A factory creating BDD solvers for the case of one system and an arbitrary
@@ -39,7 +41,7 @@ public class DistrEnvBDDSolverFactory extends LLSolverFactory<DistrEnvBDDSolverO
     protected <W extends Condition<W>> DistrEnvBDDSolvingObject<W> createSolvingObject(PetriGame game, W winCon) throws NotSupportedGameException {
         try {
             return new DistrEnvBDDSolvingObject<>(game, winCon);
-        } catch (NetNotSafeException | NoSuitableDistributionFoundException ex) {
+        } catch (NetNotSafeException | NoSuitableDistributionFoundException | InvalidPartitionException ex) {
             throw new NotSupportedGameException("Could not create solving object.", ex);
         }
     }
@@ -50,8 +52,12 @@ public class DistrEnvBDDSolverFactory extends LLSolverFactory<DistrEnvBDDSolverO
     }
 
     @Override
-    protected DistrEnvBDDSolver<Safety> getASafetySolver(PetriGame game, Safety con, DistrEnvBDDSolverOptions options) throws SolvingException {
-        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+    protected DistrEnvBDDSolver<Safety> getASafetySolver(PetriGame game, Safety con, DistrEnvBDDSolverOptions options) throws SolvingException, NotSupportedGameException, NoSuitableDistributionFoundException, InvalidPartitionException {
+        try {
+            return DistrEnvBDDSafetySolverFactory.getInstance().createDistrEnvBDDASafetySolver(createSolvingObject(game, con), options);
+        } catch (NetNotSafeException ex) {
+            throw new NotSupportedGameException(ex);
+        }
     }
 
     @Override
