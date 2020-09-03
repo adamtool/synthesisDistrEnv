@@ -19,4 +19,8 @@ public class DistrEnvBDDSolverOptions extends BDDSolverOptions {
         super(skip, false);
     }
 
+    public DistrEnvBDDSolverOptions(boolean skipTests, boolean withAutomaticTransitAnnotation) {
+        super(skipTests, withAutomaticTransitAnnotation);
+    }
+
 }
