@@ -1,8 +1,8 @@
 #### @author Manuel Gieseking
 # dependencies (folders and repos should be equally ordered)
-DEPENDENCIES_FOLDERS="libs,framework,synthesizer"
-DEPENDENCIES_REPOS="git@github.com:adamtool/libs.git,git@github.com:adamtool/framework.git,git@github.com:adamtool/synthesizer.git"
-DEPENDENCIES_REV="HEAD,HEAD,HEAD"
+DEPENDENCIES_FOLDERS="libs,examples,framework,synthesizer"
+DEPENDENCIES_REPOS="git@github.com:adamtool/libs.git,git@github.com:adamtool/examples.git,git@github.com:adamtool/framework.git,git@github.com:adamtool/synthesizer.git"
+DEPENDENCIES_REV="HEAD,HEAD,HEAD,HEAD"
 # the build target
 FRAMEWORK_TARGETS = tools petrinetwithtransits
 SYNTHESIZER_TARGETS = petrigames symbolic distrEnv
