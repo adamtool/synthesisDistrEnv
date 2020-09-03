@@ -1,5 +1,6 @@
 package uniolunisaar.adam.logic.pg.solver.distrenv;
 
+import uniolunisaar.adam.ds.solver.symbolic.bddapproach.distrenv.DistrEnvBDDSolverOptions;
 import uniolunisaar.adam.exceptions.pg.NotSupportedGameException;
 import uniolunisaar.adam.exceptions.pg.SolvingException;
 import uniolunisaar.adam.ds.petrigame.PetriGame;
@@ -7,12 +8,15 @@ import uniolunisaar.adam.ds.objectives.Buchi;
 import uniolunisaar.adam.ds.objectives.Condition;
 import uniolunisaar.adam.ds.objectives.Reachability;
 import uniolunisaar.adam.ds.objectives.Safety;
-import uniolunisaar.adam.ds.solver.distrenv.DistrEnvBDDSolvingObject;
+import uniolunisaar.adam.ds.solver.symbolic.bddapproach.distrenv.DistrEnvBDDSolvingObject;
 import uniolunisaar.adam.exceptions.pg.NoSuitableDistributionFoundException;
 import uniolunisaar.adam.exceptions.pnwt.NetNotSafeException;
 import uniolunisaar.adam.logic.pg.solver.LLSolverFactory;
 
 /**
+ * A factory creating BDD solvers for the case of one system and an arbitrary
+ * number of environment players with a universal safety objective without
+ * transits.
  *
  * @author Manuel Gieseking
  */

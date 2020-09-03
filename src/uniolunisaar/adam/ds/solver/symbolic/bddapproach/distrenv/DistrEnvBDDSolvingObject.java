@@ -1,10 +1,5 @@
-package uniolunisaar.adam.ds.solver.distrenv;
+package uniolunisaar.adam.ds.solver.symbolic.bddapproach.distrenv;
 
-import java.util.Iterator;
-import uniol.apt.adt.pn.Marking;
-import uniol.apt.adt.pn.Place;
-import uniol.apt.analysis.coverability.CoverabilityGraph;
-import uniol.apt.analysis.coverability.CoverabilityGraphNode;
 import uniolunisaar.adam.exceptions.pnwt.NetNotSafeException;
 import uniolunisaar.adam.exceptions.pg.NoSuitableDistributionFoundException;
 import uniolunisaar.adam.exceptions.pg.NotSupportedGameException;
@@ -14,6 +9,8 @@ import uniolunisaar.adam.ds.objectives.Condition;
 import uniolunisaar.adam.tools.Logger;
 
 /**
+ * This class serves for storing the input of the solving algorithm, i.e., the
+ * model (the Petri game) and the specification (the winning condition).
  *
  * @author Manuel Gieseking
  * @param <W>
@@ -28,22 +25,7 @@ public class DistrEnvBDDSolvingObject<W extends Condition<W>> extends SolvingObj
         super(game, winCon);
 
         if (!skipChecks) {
-            CoverabilityGraph cover = CoverabilityGraph.getReachabilityGraph(game);
-            // only one env token is allowed (todo: do it less expensive ?)
-            for (Iterator<CoverabilityGraphNode> iterator = cover.getNodes().iterator(); iterator.hasNext();) {
-                CoverabilityGraphNode next = iterator.next();
-                Marking m = next.getMarking();
-                boolean first = false;
-                for (Place place : game.getPlaces()) {
-                    if (m.getToken(place).getValue() > 0 && getGame().isEnvironment(place)) {
-                        if (first) {
-                            throw new NotSupportedGameException("There are two enviroment token in marking " + m.toString() + ". The BDD approach only allows one external source of information.");
-                        }
-                        first = true;
-                    }
-                }
-            }
-
+            checkPrecondition(game);
         } else {
             Logger.getInstance().addMessage("Attention: You decided to skip the tests. We cannot ensure that the net"
                     + " belongs to the class of solvable Petri games!", false);
@@ -52,6 +34,12 @@ public class DistrEnvBDDSolvingObject<W extends Condition<W>> extends SolvingObj
 
     public DistrEnvBDDSolvingObject(DistrEnvBDDSolvingObject<W> obj) {
         super(new PetriGame(obj.getGame()), obj.getWinCon().getCopy());
+    }
+
+    private void checkPrecondition(PetriGame game) throws NetNotSafeException {
+        if (!game.getBounded().isSafe()) {
+            throw new NetNotSafeException(game.getBounded().unboundedPlace.toString(), game.getBounded().sequence.toString());
+        }
     }
 
     @Override
