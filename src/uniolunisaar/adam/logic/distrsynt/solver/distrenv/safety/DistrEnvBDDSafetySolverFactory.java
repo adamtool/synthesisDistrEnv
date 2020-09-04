@@ -1,4 +1,4 @@
-package uniolunisaar.adam.logic.pg.solver.distrenv.safety;
+package uniolunisaar.adam.logic.distrsynt.solver.distrenv.safety;
 
 import uniolunisaar.adam.ds.objectives.Safety;
 import uniolunisaar.adam.ds.solver.symbolic.bddapproach.distrenv.DistrEnvBDDSolverOptions;

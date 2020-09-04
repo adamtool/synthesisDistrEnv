@@ -1,4 +1,4 @@
-package uniolunisaar.adam.logic.pg.solver.distrenv.safety;
+package uniolunisaar.adam.logic.distrsynt.solver.distrenv.safety;
 
 import java.util.Map;
 import net.sf.javabdd.BDD;
@@ -11,7 +11,7 @@ import uniolunisaar.adam.exceptions.pg.InvalidPartitionException;
 import uniolunisaar.adam.exceptions.pg.NoSuitableDistributionFoundException;
 import uniolunisaar.adam.exceptions.pg.NotSupportedGameException;
 import uniolunisaar.adam.exceptions.pnwt.NetNotSafeException;
-import uniolunisaar.adam.logic.pg.solver.distrenv.DistrEnvBDDSolver;
+import uniolunisaar.adam.logic.distrsynt.solver.distrenv.DistrEnvBDDSolver;
 
 public class DistrEnvBDDASafetySolver extends DistrEnvBDDSolver<Safety> {
 

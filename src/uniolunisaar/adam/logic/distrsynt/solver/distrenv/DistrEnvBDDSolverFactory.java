@@ -1,4 +1,4 @@
-package uniolunisaar.adam.logic.pg.solver.distrenv;
+package uniolunisaar.adam.logic.distrsynt.solver.distrenv;
 
 import uniolunisaar.adam.ds.solver.symbolic.bddapproach.distrenv.DistrEnvBDDSolverOptions;
 import uniolunisaar.adam.exceptions.pg.NotSupportedGameException;
@@ -13,7 +13,7 @@ import uniolunisaar.adam.exceptions.pg.InvalidPartitionException;
 import uniolunisaar.adam.exceptions.pg.NoSuitableDistributionFoundException;
 import uniolunisaar.adam.exceptions.pnwt.NetNotSafeException;
 import uniolunisaar.adam.logic.pg.solver.LLSolverFactory;
-import uniolunisaar.adam.logic.pg.solver.distrenv.safety.DistrEnvBDDSafetySolverFactory;
+import uniolunisaar.adam.logic.distrsynt.solver.distrenv.safety.DistrEnvBDDSafetySolverFactory;
 
 /**
  * A factory creating BDD solvers for the case of one system and an arbitrary
