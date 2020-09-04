@@ -46,6 +46,9 @@
 	<target name="test-class" depends="loadProperties" description="Runs the tests of a specific class">
 		<antcall target="distrEnv.fu.test-class"/>
 	</target>
+	<target name="javac" depends="loadProperties" description="Compiles the module">
+		<antcall target="distrEnv.fu.javac"/>
+	</target>
 	<target name="jar" depends="loadProperties" description="Builds a jar with all its dependencies">
 		<antcall target="distrEnv.fu.jar"/>
 	</target>
