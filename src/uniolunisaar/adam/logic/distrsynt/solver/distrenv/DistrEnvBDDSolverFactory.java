@@ -12,7 +12,7 @@ import uniolunisaar.adam.ds.solver.symbolic.bddapproach.distrenv.DistrEnvBDDSolv
 import uniolunisaar.adam.exceptions.pg.InvalidPartitionException;
 import uniolunisaar.adam.exceptions.pg.NoSuitableDistributionFoundException;
 import uniolunisaar.adam.exceptions.pnwt.NetNotSafeException;
-import uniolunisaar.adam.logic.pg.solver.LLSolverFactory;
+import uniolunisaar.adam.logic.synthesis.solver.LLSolverFactory;
 import uniolunisaar.adam.logic.distrsynt.solver.distrenv.safety.DistrEnvBDDSafetySolverFactory;
 
 /**
