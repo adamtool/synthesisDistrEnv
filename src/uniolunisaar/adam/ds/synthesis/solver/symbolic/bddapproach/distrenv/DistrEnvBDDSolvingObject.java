@@ -1,4 +1,4 @@
-package uniolunisaar.adam.ds.solver.symbolic.bddapproach.distrenv;
+package uniolunisaar.adam.ds.synthesis.solver.symbolic.bddapproach.distrenv;
 
 import uniol.apt.adt.pn.Place;
 import uniolunisaar.adam.exceptions.pnwt.NetNotSafeException;

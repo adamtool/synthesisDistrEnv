@@ -3,9 +3,9 @@ package uniolunisaar.adam.tests.symbolic.bddapproach.distrenv;
 import java.io.File;
 import org.testng.annotations.Test;
 import uniolunisaar.adam.ds.objectives.Condition;
-import uniolunisaar.adam.ds.solver.symbolic.bddapproach.distrenv.DistrEnvBDDSolverOptions;
-import uniolunisaar.adam.logic.distrsynt.solver.distrenv.DistrEnvBDDSolver;
-import uniolunisaar.adam.logic.distrsynt.solver.distrenv.DistrEnvBDDSolverFactory;
+import uniolunisaar.adam.ds.synthesis.solver.symbolic.bddapproach.distrenv.DistrEnvBDDSolverOptions;
+import uniolunisaar.adam.logic.synthesis.solver.symbolic.bddapproach.distrenv.DistrEnvBDDSolver;
+import uniolunisaar.adam.logic.synthesis.solver.symbolic.bddapproach.distrenv.DistrEnvBDDSolverFactory;
 import uniolunisaar.adam.tools.Logger;
 
 /**
