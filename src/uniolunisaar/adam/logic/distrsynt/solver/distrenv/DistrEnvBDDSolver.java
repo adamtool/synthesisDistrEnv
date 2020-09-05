@@ -3,7 +3,7 @@ package uniolunisaar.adam.logic.distrsynt.solver.distrenv;
 import uniolunisaar.adam.ds.solver.symbolic.bddapproach.distrenv.DistrEnvBDDSolverOptions;
 import uniolunisaar.adam.ds.objectives.Condition;
 import uniolunisaar.adam.ds.solver.symbolic.bddapproach.distrenv.DistrEnvBDDSolvingObject;
-import uniolunisaar.adam.logic.distrsynt.solver.symbolic.bddapproach.BDDSolver;
+import uniolunisaar.adam.logic.synthesis.solver.symbolic.bddapproach.BDDSolver;
 
 /**
  *
