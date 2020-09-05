@@ -3,9 +3,9 @@ package uniolunisaar.adam.logic.distrsynt.solver.distrenv.safety;
 import uniolunisaar.adam.ds.objectives.Safety;
 import uniolunisaar.adam.ds.solver.symbolic.bddapproach.distrenv.DistrEnvBDDSolverOptions;
 import uniolunisaar.adam.ds.solver.symbolic.bddapproach.distrenv.DistrEnvBDDSolvingObject;
-import uniolunisaar.adam.exceptions.pg.InvalidPartitionException;
-import uniolunisaar.adam.exceptions.pg.NoSuitableDistributionFoundException;
-import uniolunisaar.adam.exceptions.pg.NotSupportedGameException;
+import uniolunisaar.adam.exceptions.synthesis.pgwt.InvalidPartitionException;
+import uniolunisaar.adam.exceptions.synthesis.pgwt.NoSuitableDistributionFoundException;
+import uniolunisaar.adam.exceptions.synthesis.pgwt.NotSupportedGameException;
 import uniolunisaar.adam.exceptions.pnwt.NetNotSafeException;
 
 /**

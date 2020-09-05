@@ -1,6 +1,6 @@
 package uniolunisaar.adam.ds.solver.symbolic.bddapproach.distrenv;
 
-import uniolunisaar.adam.ds.solver.symbolic.bddapproach.BDDSolverOptions;
+import uniolunisaar.adam.ds.synthesis.solver.symbolic.bddapproach.BDDSolverOptions;
 
 /**
  * This class is used to store solver specific options for the solver for one

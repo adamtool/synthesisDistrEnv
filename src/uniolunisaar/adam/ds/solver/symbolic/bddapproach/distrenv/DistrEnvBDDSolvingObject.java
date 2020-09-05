@@ -2,14 +2,14 @@ package uniolunisaar.adam.ds.solver.symbolic.bddapproach.distrenv;
 
 import uniol.apt.adt.pn.Place;
 import uniolunisaar.adam.exceptions.pnwt.NetNotSafeException;
-import uniolunisaar.adam.exceptions.pg.NoSuitableDistributionFoundException;
-import uniolunisaar.adam.exceptions.pg.NotSupportedGameException;
-import uniolunisaar.adam.ds.petrigame.PetriGame;
+import uniolunisaar.adam.exceptions.synthesis.pgwt.NoSuitableDistributionFoundException;
+import uniolunisaar.adam.exceptions.synthesis.pgwt.NotSupportedGameException;
+import uniolunisaar.adam.ds.synthesis.pgwt.PetriGameWithTransits;
 import uniolunisaar.adam.ds.objectives.Condition;
-import uniolunisaar.adam.ds.solver.symbolic.bddapproach.BDDSolvingObject;
-import uniolunisaar.adam.exceptions.pg.InvalidPartitionException;
-import uniolunisaar.adam.logic.pg.calculators.CalculatorIDs;
-import uniolunisaar.adam.logic.pg.partitioning.Partitioner;
+import uniolunisaar.adam.ds.synthesis.solver.symbolic.bddapproach.BDDSolvingObject;
+import uniolunisaar.adam.exceptions.synthesis.pgwt.InvalidPartitionException;
+import uniolunisaar.adam.logic.synthesis.pgwt.calculators.CalculatorIDs;
+import uniolunisaar.adam.logic.synthesis.pgwt.partitioning.Partitioner;
 import uniolunisaar.adam.tools.Logger;
 import uniolunisaar.adam.util.PGTools;
 
@@ -22,11 +22,11 @@ import uniolunisaar.adam.util.PGTools;
  */
 public class DistrEnvBDDSolvingObject<W extends Condition<W>> extends BDDSolvingObject<W> {
 
-    public DistrEnvBDDSolvingObject(PetriGame game, W winCon) throws NotSupportedGameException, NetNotSafeException, NoSuitableDistributionFoundException, InvalidPartitionException {
+    public DistrEnvBDDSolvingObject(PetriGameWithTransits game, W winCon) throws NotSupportedGameException, NetNotSafeException, NoSuitableDistributionFoundException, InvalidPartitionException {
         this(game, winCon, false);
     }
 
-    public DistrEnvBDDSolvingObject(PetriGame game, W winCon, boolean skipChecks) throws NotSupportedGameException, NetNotSafeException, NoSuitableDistributionFoundException, InvalidPartitionException {
+    public DistrEnvBDDSolvingObject(PetriGameWithTransits game, W winCon, boolean skipChecks) throws NotSupportedGameException, NetNotSafeException, NoSuitableDistributionFoundException, InvalidPartitionException {
         super(game, winCon, skipChecks);
     }
 
@@ -35,7 +35,7 @@ public class DistrEnvBDDSolvingObject<W extends Condition<W>> extends BDDSolving
     }
 
     @Override
-    protected void checkPrecondition(PetriGame game) throws NetNotSafeException {
+    protected void checkPrecondition(PetriGameWithTransits game) throws NetNotSafeException {
         if (!game.getBounded().isSafe()) {
             throw new NetNotSafeException(game.getBounded().unboundedPlace.toString(), game.getBounded().sequence.toString());
         }
