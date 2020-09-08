@@ -1,4 +1,5 @@
-#### @author Manuel Gieseking
+## @author Manuel Gieseking
+
 # dependencies (folders and repos should be equally ordered)
 DEPENDENCIES_FOLDERS="libs,examples,framework,synthesizer"
 DEPENDENCIES_REPOS="git@github.com:adamtool/libs.git,git@github.com:adamtool/examples.git,git@github.com:adamtool/framework.git,git@github.com:adamtool/synthesizer.git"
@@ -56,7 +57,7 @@ pull_dependencies:
 	./pull_dependencies.sh ${DEPENDENCIES_FOLDERS} ${DEPENDENCIES_REPOS} ${DEPENDENCIES_REV}
 
 rm_dependencies:
-	rm -rf dependencies
+	$(RM) -rf dependencies
 
 tools: check_dependencies
 	ant -buildfile ./dependencies/framework/tools/build.xml $(t)
@@ -64,7 +65,7 @@ tools: check_dependencies
 petrinetwithtransits: check_dependencies
 	ant -buildfile ./dependencies/framework/petrinetWithTransits/build.xml $(t)
 
-petrigames:
+petrigames: check_dependencies
 	ant -buildfile ./dependencies/synthesizer/petriGames/build.xml $(t)
 
 bdd: check_dependencies
@@ -91,12 +92,12 @@ setCleanAll:
 	$(eval t=clean-all)
 
 clean: setClean $(FRAMEWORK_TARGETS) $(SYNTHESIZER_TARGETS)
-	rm -r -f deploy
-	rm -r -f javadoc
+	$(RM) -r -f deploy
+	$(RM) -r -f javadoc
 
 clean-all: setCleanAll $(FRAMEWORK_TARGETS) $(SYNTHESIZER_TARGETS)
-	rm -r -f deploy
-	rm -r -f javadoc
+	$(RM) -r -f deploy
+	$(RM) -r -f javadoc
 
 #javadoc:
 #	ant javadoc
