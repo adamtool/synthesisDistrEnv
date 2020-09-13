@@ -1,6 +1,6 @@
 package uniolunisaar.adam.logic.synthesis.solver.symbolic.bddapproach.distrenv.safety;
 
-import uniolunisaar.adam.ds.objectives.Safety;
+import uniolunisaar.adam.ds.objectives.global.GlobalSafety;
 import uniolunisaar.adam.ds.synthesis.solver.symbolic.bddapproach.distrenv.DistrEnvBDDSolverOptions;
 import uniolunisaar.adam.ds.synthesis.solver.symbolic.bddapproach.distrenv.DistrEnvBDDSolvingObject;
 import uniolunisaar.adam.exceptions.synthesis.pgwt.InvalidPartitionException;
@@ -32,7 +32,7 @@ public class DistrEnvBDDSafetySolverFactory {
 
     }
 
-    public DistrEnvBDDASafetySolver createDistrEnvBDDASafetySolver(DistrEnvBDDSolvingObject<Safety> obj, DistrEnvBDDSolverOptions opts) throws NotSupportedGameException, NoSuitableDistributionFoundException, InvalidPartitionException, NetNotSafeException {
+    public DistrEnvBDDASafetySolver createDistrEnvBDDASafetySolver(DistrEnvBDDSolvingObject<GlobalSafety> obj, DistrEnvBDDSolverOptions opts) throws NotSupportedGameException, NoSuitableDistributionFoundException, InvalidPartitionException, NetNotSafeException {
         return new DistrEnvBDDASafetySolver(obj, opts);
     }
 

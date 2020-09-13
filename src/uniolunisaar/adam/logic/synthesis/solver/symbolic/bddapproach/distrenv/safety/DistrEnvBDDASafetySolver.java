@@ -3,7 +3,7 @@ package uniolunisaar.adam.logic.synthesis.solver.symbolic.bddapproach.distrenv.s
 import java.util.Map;
 import net.sf.javabdd.BDD;
 import uniol.apt.adt.pn.Transition;
-import uniolunisaar.adam.ds.objectives.Safety;
+import uniolunisaar.adam.ds.objectives.global.GlobalSafety;
 import uniolunisaar.adam.ds.synthesis.solver.symbolic.bddapproach.distrenv.DistrEnvBDDSolverOptions;
 import uniolunisaar.adam.ds.synthesis.solver.symbolic.bddapproach.distrenv.DistrEnvBDDSolvingObject;
 import uniolunisaar.adam.exceptions.synthesis.pgwt.CalculationInterruptedException;
@@ -13,9 +13,9 @@ import uniolunisaar.adam.exceptions.synthesis.pgwt.NotSupportedGameException;
 import uniolunisaar.adam.exceptions.pnwt.NetNotSafeException;
 import uniolunisaar.adam.logic.synthesis.solver.symbolic.bddapproach.distrenv.DistrEnvBDDSolver;
 
-public class DistrEnvBDDASafetySolver extends DistrEnvBDDSolver<Safety> {
+public class DistrEnvBDDASafetySolver extends DistrEnvBDDSolver<GlobalSafety> {
 
-    DistrEnvBDDASafetySolver(DistrEnvBDDSolvingObject<Safety> obj, DistrEnvBDDSolverOptions opts) throws NotSupportedGameException, NetNotSafeException, NoSuitableDistributionFoundException, InvalidPartitionException {
+    DistrEnvBDDASafetySolver(DistrEnvBDDSolvingObject<GlobalSafety> obj, DistrEnvBDDSolverOptions opts) throws NotSupportedGameException, NetNotSafeException, NoSuitableDistributionFoundException, InvalidPartitionException {
         super(obj, opts);
     }
 
