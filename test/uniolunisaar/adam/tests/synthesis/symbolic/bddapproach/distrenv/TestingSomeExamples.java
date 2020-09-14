@@ -1,4 +1,4 @@
-package uniolunisaar.adam.tests.symbolic.bddapproach.distrenv;
+package uniolunisaar.adam.tests.synthesis.symbolic.bddapproach.distrenv;
 
 import java.io.File;
 import org.testng.annotations.Test;
