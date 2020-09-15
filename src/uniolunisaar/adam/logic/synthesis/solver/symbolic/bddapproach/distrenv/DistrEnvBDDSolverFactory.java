@@ -87,7 +87,7 @@ public class DistrEnvBDDSolverFactory extends LLSolverFactory<DistrEnvBDDSolverO
 
     protected DistrEnvBDDSolver<GlobalSafety> getGlobalSafetySolver(PetriGameWithTransits game, GlobalSafety con, DistrEnvBDDSolverOptions options) throws SolvingException {
         try {
-            return DistrEnvBDDSafetySolverFactory.getInstance().createDistrEnvBDDASafetySolver(createSolvingObject(game, con), options);
+            return DistrEnvBDDSafetySolverFactory.getInstance().createDistrEnvBDDGlobalSafetySolver(createSolvingObject(game, con), options);
         } catch (NetNotSafeException ex) {
             throw new NotSupportedGameException(ex);
         }

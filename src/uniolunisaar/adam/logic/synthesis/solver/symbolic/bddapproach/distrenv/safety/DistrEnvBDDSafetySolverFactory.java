@@ -32,8 +32,8 @@ public class DistrEnvBDDSafetySolverFactory {
 
     }
 
-    public DistrEnvBDDASafetySolver createDistrEnvBDDASafetySolver(DistrEnvBDDSolvingObject<GlobalSafety> obj, DistrEnvBDDSolverOptions opts) throws NotSupportedGameException, NoSuitableDistributionFoundException, InvalidPartitionException, NetNotSafeException {
-        return new DistrEnvBDDASafetySolver(obj, opts);
+    public DistrEnvBDDGlobalSafetySolver createDistrEnvBDDGlobalSafetySolver(DistrEnvBDDSolvingObject<GlobalSafety> obj, DistrEnvBDDSolverOptions opts) throws NotSupportedGameException, NoSuitableDistributionFoundException, InvalidPartitionException, NetNotSafeException {
+        return new DistrEnvBDDGlobalSafetySolver(obj, opts);
     }
 
 }
