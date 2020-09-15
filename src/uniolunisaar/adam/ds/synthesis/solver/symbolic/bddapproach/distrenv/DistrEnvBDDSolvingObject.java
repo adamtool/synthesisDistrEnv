@@ -1,13 +1,13 @@
 package uniolunisaar.adam.ds.synthesis.solver.symbolic.bddapproach.distrenv;
 
 import uniol.apt.adt.pn.Place;
+import uniolunisaar.adam.ds.objectives.Condition;
+import uniolunisaar.adam.ds.synthesis.pgwt.PetriGameWithTransits;
+import uniolunisaar.adam.ds.synthesis.solver.symbolic.bddapproach.BDDSolvingObject;
 import uniolunisaar.adam.exceptions.pnwt.NetNotSafeException;
+import uniolunisaar.adam.exceptions.synthesis.pgwt.InvalidPartitionException;
 import uniolunisaar.adam.exceptions.synthesis.pgwt.NoSuitableDistributionFoundException;
 import uniolunisaar.adam.exceptions.synthesis.pgwt.NotSupportedGameException;
-import uniolunisaar.adam.ds.synthesis.pgwt.PetriGameWithTransits;
-import uniolunisaar.adam.ds.objectives.Condition;
-import uniolunisaar.adam.ds.synthesis.solver.symbolic.bddapproach.BDDSolvingObject;
-import uniolunisaar.adam.exceptions.synthesis.pgwt.InvalidPartitionException;
 import uniolunisaar.adam.logic.synthesis.pgwt.calculators.CalculatorIDs;
 import uniolunisaar.adam.logic.synthesis.pgwt.partitioning.Partitioner;
 import uniolunisaar.adam.tools.Logger;
@@ -17,8 +17,8 @@ import uniolunisaar.adam.util.PGTools;
  * This class serves for storing the input of the solving algorithm, i.e., the
  * model (the Petri game) and the specification (the winning condition).
  *
- * @author Manuel Gieseking
  * @param <W>
+ * @author Manuel Gieseking
  */
 public class DistrEnvBDDSolvingObject<W extends Condition<W>> extends BDDSolvingObject<W> {
 
@@ -35,10 +35,11 @@ public class DistrEnvBDDSolvingObject<W extends Condition<W>> extends BDDSolving
     }
 
     @Override
-    protected void checkPrecondition(PetriGameWithTransits game) throws NetNotSafeException {
+    protected void checkPrecondition(PetriGameWithTransits game) throws NetNotSafeException, NotSupportedGameException {
         if (!game.getBounded().isSafe()) {
             throw new NetNotSafeException(game.getBounded().unboundedPlace.toString(), game.getBounded().sequence.toString());
         }
+        PGTools.checkOnlyOneSysToken(game);
     }
 
     @Override
