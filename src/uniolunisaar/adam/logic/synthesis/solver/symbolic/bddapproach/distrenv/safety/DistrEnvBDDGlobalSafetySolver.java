@@ -40,7 +40,7 @@ public class DistrEnvBDDGlobalSafetySolver extends DistrEnvBDDSolver<GlobalSafet
     }
 
     @Override
-    public boolean isSpecialState(BDD state) {
+    protected BDD calcBadDCSs() {
         throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
     }
 
@@ -54,14 +54,20 @@ public class DistrEnvBDDGlobalSafetySolver extends DistrEnvBDDSolver<GlobalSafet
         throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
     }
 
+    /*
+     * The global safety winning condition is a safety condition.
+     * Thus only states with bad markings are special.
+     *
+     * TODO in all other safety solvers this this will return false/zero. Explain why.
+     */
     @Override
-    protected BDD calcBadDCSs() {
-        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+    public boolean isSpecialState(BDD state) {
+        return false;
     }
 
     @Override
     protected BDD calcSpecialDCSs() {
-        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+        return getFactory().zero();
     }
 
 }
