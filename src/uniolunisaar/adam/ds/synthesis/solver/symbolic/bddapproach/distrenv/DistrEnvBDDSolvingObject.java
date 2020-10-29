@@ -1,6 +1,13 @@
 package uniolunisaar.adam.ds.synthesis.solver.symbolic.bddapproach.distrenv;
 
+import java.util.Collection;
+import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
+import org.apache.commons.collections4.CollectionUtils;
+import uniol.apt.adt.pn.Marking;
 import uniol.apt.adt.pn.Place;
+import uniol.apt.adt.pn.Transition;
 import uniolunisaar.adam.ds.objectives.Condition;
 import uniolunisaar.adam.ds.synthesis.pgwt.PetriGameWithTransits;
 import uniolunisaar.adam.ds.synthesis.solver.symbolic.bddapproach.BDDSolvingObject;
@@ -21,6 +28,8 @@ import uniolunisaar.adam.util.PGTools;
  * @author Manuel Gieseking
  */
 public class DistrEnvBDDSolvingObject<W extends Condition<W>> extends BDDSolvingObject<W> {
+
+    private List<Transition> systemTransitions, envTransitions;
 
     public DistrEnvBDDSolvingObject(PetriGameWithTransits game, W winCon) throws NotSupportedGameException, NetNotSafeException, NoSuitableDistributionFoundException, InvalidPartitionException {
         this(game, winCon, false);
@@ -64,9 +73,60 @@ public class DistrEnvBDDSolvingObject<W extends Condition<W>> extends BDDSolving
         }
     }
 
+    /**
+     * All transitions in the petri game, which have no system place in their preset.
+     */
+    public List<Transition> getPurelyEnvironmentalTransitions() {
+        if (this.envTransitions == null) {
+            Set<Place> systemPlaces = this.getSystemPlaces();
+            this.envTransitions = this.getGame().getTransitions().stream()
+                    .filter(transition -> CollectionUtils.intersection(systemPlaces, transition.getPreset()).isEmpty())
+                    .collect(Collectors.toUnmodifiableList());
+        }
+        return this.envTransitions;
+    }
+
+    /**
+     * All transitions in the petri game, which have a system place in their preset.
+     */
+    public List<Transition> getSystemTransitions() {
+        if (this.systemTransitions == null) {
+            Set<Place> systemPlaces = this.getSystemPlaces();
+            this.systemTransitions = this.getGame().getTransitions().stream()
+                    .filter(transition -> !CollectionUtils.intersection(systemPlaces, transition.getPreset()).isEmpty())
+                    .collect(Collectors.toUnmodifiableList());
+        }
+        return this.systemTransitions;
+    }
+
+    public Set<Place> getSystemPlaces() {
+        return this.getDevidedPlaces()[0];
+    }
+
+    public Place getSystemPlaceOfTransition(Transition transition, boolean post) {
+        if (!this.getSystemTransitions().contains(transition)) {
+            throw new IllegalArgumentException(transition + " has no system place in it's preset. It's purely environmental. " + transition.getPreset());
+        }
+        Collection<Place> currentPlaceOfSystemPlayer =
+                CollectionUtils.intersection(this.getSystemPlaces(), post ? transition.getPostset() : transition.getPreset());
+        if (currentPlaceOfSystemPlayer.size() != 1) {
+            throw new AssertionError("Every system transition must have exactly one system place in it's postset (for this solver)");
+        }
+        return currentPlaceOfSystemPlayer.iterator().next();
+    }
+
+    public Set<Transition> getTransitionsEnabledByPlace(Place place) {
+        return this.getGame().getTransitions().stream()
+                .filter(transition -> transition.getPreset().contains(place))
+                .collect(Collectors.toUnmodifiableSet());
+    }
+
+    public Set<Marking> getBadMarkings() {
+        return this.getGame().getFinalMarkings();
+    }
+
     @Override
     public DistrEnvBDDSolvingObject<W> getCopy() {
         return new DistrEnvBDDSolvingObject<>(this);
     }
-
 }
