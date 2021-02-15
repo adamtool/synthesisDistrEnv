@@ -5,6 +5,9 @@ reports/
 testOutput/
 testng.xml
 
+################## Texteditor related
+*~
+
 ################## JAVA related
 # Compiled class file
 *.class
