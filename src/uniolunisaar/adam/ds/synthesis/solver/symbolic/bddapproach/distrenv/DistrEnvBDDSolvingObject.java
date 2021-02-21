@@ -49,7 +49,7 @@ public class DistrEnvBDDSolvingObject<W extends Condition<W>> extends BDDSolving
         if (!game.getBounded().isSafe()) {
             throw new NetNotSafeException(game.getBounded().unboundedPlace.toString(), game.getBounded().sequence.toString());
         }
-        PGTools.checkOnlyOneSysToken(game);
+        PGTools.checkExactlyOneSysToken(game);
     }
 
     @Override
