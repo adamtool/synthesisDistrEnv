@@ -2,6 +2,7 @@ package uniolunisaar.adam.ds.synthesis.solver.symbolic.bddapproach.distrenv;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.apache.commons.collections4.CollectionUtils;
@@ -53,23 +54,88 @@ public class DistrEnvBDDSolvingObject<W extends Condition<W>> extends BDDSolving
 
     @Override
     protected void annotatePlacesWithPartitions(boolean skipChecks) throws InvalidPartitionException, NoSuitableDistributionFoundException {
-        if (Partitioner.hasDistribution(getGame(), false)) {
+        partitionPlaces(getGame(), skipChecks);
+    }
+
+    public static void partitionPlaces(PetriGameWithTransits game, boolean skipChecks) throws InvalidPartitionException, NoSuitableDistributionFoundException {
+        if (game.getPlaces().stream().anyMatch(game::hasPartition)) {
             Logger.getInstance().addMessage("Using the annotated partition of places.");
         } else {
-            // todo: could add here algorithms to automatically partition the places
-            long tokencount = getGame().getValue(CalculatorIDs.MAX_TOKEN_COUNT.name());
-            throw new NoSuitableDistributionFoundException(tokencount);
+            Partitioner.doIt(game, false);
         }
-        // to simplify the annotations for the user (system player automatically gets 0)
-        for (Place p : getGame().getPlaces()) {
-            if (getGame().isSystem(p)) {
-                getGame().setPartition(p, 0);
-            }
-        }
+        autoPartitionSystem(game);
+
         if (!skipChecks) {
             Logger.getInstance().addMessage("check partitioning ... ", true);
-            PGTools.checkValidPartitioned(getGame());
+            PGTools.checkValidPartitioned(game);
+
+            Map<Integer, Set<Place>> partitions = game.getPlaces().stream()
+                    .collect(Collectors.groupingBy(game::getPartition, Collectors.toSet()));
+            long tokenCount = game.getValue(CalculatorIDs.MAX_TOKEN_COUNT.name());
+            if (tokenCount != partitions.size()) {
+                throw new NoSuitableDistributionFoundException();
+            }
+
+            Set<Place> systemPlaces = game.getPlaces().stream()
+                    .filter(game::isSystem)
+                    .collect(Collectors.toSet());
+            if (!partitions.get(0).equals(systemPlaces)) {
+                boolean swapped = false;
+                for (Map.Entry<Integer, Set<Place>> partition : partitions.entrySet()) {
+                    if (partition.getValue().equals(systemPlaces)) {
+                        swapPartitions(game, partition.getKey(), 0);
+                        swapped = true;
+                    }
+                }
+                if (!swapped) {
+                    throw new NoSuitableDistributionFoundException("Partition 0 must be exactly the system places " + systemPlaces);
+                }
+            }
             Logger.getInstance().addMessage("... partitionning check done.");
+        }
+    }
+
+    /**
+     * if system places are not partitioned,
+     * they automatically get assigned partition 0.
+     * if partition 0 is already occupied by environment places,
+     * they are first moved to another free index.
+     */
+    private static void autoPartitionSystem(PetriGameWithTransits game) throws InvalidPartitionException {
+        Map<Integer, Set<Place>> partitions = game.getPlaces().stream()
+                .collect(Collectors.groupingBy(place -> game.hasPartition(place) ? game.getPartition(place) : -1, Collectors.toSet()));
+        if (!partitions.containsKey(-1) || partitions.get(-1).isEmpty()) {
+            /* there are not un-partitioned places. nothing to do */
+            return;
+        }
+
+        Set<Place> systemPlaces = game.getPlaces().stream()
+                .filter(game::isSystem)
+                .collect(Collectors.toSet());
+        if (!systemPlaces.equals(partitions.get(-1))) {
+            throw new InvalidPartitionException("there are un-partitioned environment places.");
+        }
+
+        if (partitions.containsKey(0) && !partitions.get(0).isEmpty()) {
+            Logger.getInstance().addMessage("Moving partition of environment places at index 0 to another index.");
+            int firstUnusedPartitionId = 1;
+            while (partitions.containsKey(firstUnusedPartitionId)) {
+                firstUnusedPartitionId++;
+            }
+            swapPartitions(game, 0, firstUnusedPartitionId);
+            /* now there is space in partition 0 */
+        }
+        Logger.getInstance().addMessage("Annotating system places with partition 0.");
+        partitions.get(-1).forEach(place -> game.setPartition(place, 0));
+    }
+
+    private static void swapPartitions(PetriGameWithTransits game, int a, int b) {
+        for (Place place : game.getPlaces()) {
+            if (game.hasPartition(place) && game.getPartition(place) == a) {
+                game.setPartition(place, b);
+            } else if (game.hasPartition(place) && game.getPartition(place) == b) {
+                game.setPartition(place, a);
+            }
         }
     }
 
