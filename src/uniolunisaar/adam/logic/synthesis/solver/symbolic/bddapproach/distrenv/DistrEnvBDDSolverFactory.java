@@ -1,5 +1,7 @@
 package uniolunisaar.adam.logic.synthesis.solver.symbolic.bddapproach.distrenv;
 
+import java.util.Map;
+import uniol.apt.adt.pn.Marking;
 import uniolunisaar.adam.ds.synthesis.solver.symbolic.bddapproach.distrenv.DistrEnvBDDSolverOptions;
 import uniolunisaar.adam.exceptions.synthesis.pgwt.NotSupportedGameException;
 import uniolunisaar.adam.exceptions.synthesis.pgwt.SolvingException;
@@ -99,9 +101,15 @@ public class DistrEnvBDDSolverFactory extends LLSolverFactory<DistrEnvBDDSolverO
     }
 
     @Override
-    protected DistrEnvBDDSolver<Safety> getASafetySolver(PetriGameWithTransits game, Safety con, DistrEnvBDDSolverOptions options) throws SolvingException, NotSupportedGameException, NoSuitableDistributionFoundException, InvalidPartitionException {
-        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.   
-
+    protected DistrEnvBDDSolver<GlobalSafety> getASafetySolver(PetriGameWithTransits game, Safety con, DistrEnvBDDSolverOptions options) throws SolvingException, NotSupportedGameException, NoSuitableDistributionFoundException, InvalidPartitionException {
+        con.getBadPlaces().stream()
+                .map(place -> new Marking(game, Map.of(place.getId(), 1)))
+                .forEach(game::addFinalMarking);
+        try {
+            return DistrEnvBDDSafetySolverFactory.getInstance().createDistrEnvBDDGlobalSafetySolver(createSolvingObject(game, new GlobalSafety()), options);
+        } catch (NetNotSafeException ex) {
+            throw new NotSupportedGameException(ex);
+        }
     }
 
     @Override
