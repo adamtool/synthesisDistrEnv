@@ -181,12 +181,6 @@ public class DistrEnvBDDSolvingObject<W extends Condition<W>> extends BDDSolving
         return currentPlaceOfSystemPlayer.iterator().next();
     }
 
-    public Set<Transition> getTransitionsEnabledByPlace(Place place) {
-        return this.getGame().getTransitions().stream()
-                .filter(transition -> transition.getPreset().contains(place))
-                .collect(Collectors.toUnmodifiableSet());
-    }
-
     public Set<Marking> getBadMarkings() {
         return this.getGame().getFinalMarkings();
     }

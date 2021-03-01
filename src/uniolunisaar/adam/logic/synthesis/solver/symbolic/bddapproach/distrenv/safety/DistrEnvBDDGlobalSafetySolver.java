@@ -3,9 +3,11 @@ package uniolunisaar.adam.logic.synthesis.solver.symbolic.bddapproach.distrenv.s
 import java.math.BigInteger;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.StringJoiner;
 import java.util.function.Function;
@@ -15,10 +17,12 @@ import java.util.stream.IntStream;
 import net.sf.javabdd.BDD;
 import net.sf.javabdd.BDDDomain;
 import org.apache.commons.collections4.CollectionUtils;
+import uniol.apt.adt.Node;
 import uniol.apt.adt.pn.Marking;
 import uniol.apt.adt.pn.Place;
 import uniol.apt.adt.pn.Transition;
 import uniolunisaar.adam.ds.objectives.global.GlobalSafety;
+import uniolunisaar.adam.ds.synthesis.pgwt.PetriGameWithTransits;
 import uniolunisaar.adam.ds.synthesis.solver.symbolic.bddapproach.distrenv.DistrEnvBDDSolverOptions;
 import uniolunisaar.adam.ds.synthesis.solver.symbolic.bddapproach.distrenv.DistrEnvBDDSolvingObject;
 import uniolunisaar.adam.exceptions.pnwt.CalculationInterruptedException;
@@ -27,11 +31,21 @@ import uniolunisaar.adam.tools.Logger;
 import uniolunisaar.adam.util.benchmarks.synthesis.Benchmarks;
 import uniolunisaar.adam.util.symbolic.bddapproach.BDDTools;
 
+/**
+ * {@link #existsWinningStrategy() Decide the existence of a wining stratey}
+ * for a {@link PetriGameWithTransits petri game} with bad markings.
+ * <p>
+ * Construct a two player graph game
+ * as described in
+ * Synthesis in Distributed Environments
+ * by Bernd Finkbeiner and Paul Gölz
+ * in Figure 2: Graph(G).
+ */
 public class DistrEnvBDDGlobalSafetySolver extends DistrEnvBDDSolver<GlobalSafety> {
 
     /*
      * Every token (player) has their own partition of places.
-     * That token will only every be in places from their partition.
+     * That token will only ever be in places from their partition.
      *
      * Partition 0 is for the system player.
      */
@@ -83,12 +97,12 @@ public class DistrEnvBDDGlobalSafetySolver extends DistrEnvBDDSolver<GlobalSafet
 
     @Override
     protected void createVariables() {
-        int tokencount = this.getSolvingObject().getMaxTokenCountInt();
-        PLACES = new BDDDomain[2][tokencount];
+        int numberOfPartitions = this.getSolvingObject().getMaxTokenCountInt();
+        PLACES = new BDDDomain[2][numberOfPartitions];
         TRANSITIONS = new BDDDomain[2];
         TOP = new BDDDomain[2];
         for (int pos : List.of(PREDECESSOR, SUCCESSOR)) {
-            for (int partition = 0; partition < tokencount; partition++) {
+            for (int partition = 0; partition < numberOfPartitions; partition++) {
                 PLACES[pos][partition] = this.getFactory().extDomain(this.getSolvingObject().getDevidedPlaces()[partition].size());
 
                 /* for every system transition the system player must choose whether or not to allow that transition. */
@@ -117,7 +131,7 @@ public class DistrEnvBDDGlobalSafetySolver extends DistrEnvBDDSolver<GlobalSafet
                         .collect(and()));
     }
 
-    // </variables>
+    /* </variables> */
 
     private BDD codeSystemTransition(Transition transition, int pos) {
         int transitionIndex = this.getSolvingObject().getSystemTransitions().indexOf(transition);
@@ -129,7 +143,10 @@ public class DistrEnvBDDGlobalSafetySolver extends DistrEnvBDDSolver<GlobalSafet
     }
 
     protected BDD graphGame_initialVertex(int pos) {
-        return codeMarking(this.getGame().getInitialMarking(), pos).and(notTop(pos));
+        return codeMarking(this.getGame().getInitialMarking(), pos)
+                /* the system must choose it's initial commitment set. */
+                .andWith(top(pos))
+                .andWith(nothingChosen(pos));
     }
 
     /**
@@ -144,12 +161,7 @@ public class DistrEnvBDDGlobalSafetySolver extends DistrEnvBDDSolver<GlobalSafet
      * <p>
      * In the paper these are the edges of type E1.
      */
-    protected BDD graphGame_player0Edge(Transition transition) {
-        if (!this.getSolvingObject().getSystemTransitions().contains(transition)) {
-            return getZero();
-            //throw new IllegalArgumentException(transition + " is not a system transition");
-        }
-
+    protected BDD graphGame_player0Edge(Place enteredSystemPlace) {
         BDD ret = getOne();
 
         /*
@@ -158,23 +170,16 @@ public class DistrEnvBDDGlobalSafetySolver extends DistrEnvBDDSolver<GlobalSafet
          * who then sets TOP to inform the player
          * that they have to choose a new commitment set.
          * that means the marking changes in player 1's vertex, not here.
-         * since this edge is after the edge that moved the tokens,
-         * and before any other transitions can fire,
-         * the current marking must contains the postset of the transition.
          */
-        ret.andWith(transition.getPostset().stream()
-                .map(place -> codePlace(place, PREDECESSOR, getGame().getPartition(place))
-                        .andWith(codePlace(place, SUCCESSOR, getGame().getPartition(place))))
-                .collect(or()));
         ret.andWith(markingsEqual()).andWith(onlyExistingPlacesInMarking(PREDECESSOR));
 
         /* the purpose of this transition is to remove the top. */
         ret.andWith(top(PREDECESSOR)).andWith(notTop(SUCCESSOR));
 
         /*
-         * only transitions that are enabled by the system place can be chosen.
+         * only transitions in the postset of the current system place can be chosen.
          */
-        ret.andWith(onlyEnabledSystemTransitionsInCommitment(SUCCESSOR));
+        ret.andWith(onlyChooseTransitionsInPostsetOfSystemPlace(SUCCESSOR));
 
         /*
          * we don't specify the chosen commitment set,
@@ -221,8 +226,12 @@ public class DistrEnvBDDGlobalSafetySolver extends DistrEnvBDDSolver<GlobalSafet
         /*
          * no new commitment set is chosen yet.
          * that happens in the edge going out of the next player 0 vertex.
+         * the old commitment set is no  longer relevant,
+         * because it's replaced with TOP.
+         * the commitment set must have a value.
+         * the empty set is chosen arbitrarily.
          */
-        ret.andWith(commitmentsEqual());
+        ret.andWith(nothingChosen(SUCCESSOR));
         ret.andWith(fire(transition));
         return ret;
     }
@@ -233,7 +242,7 @@ public class DistrEnvBDDGlobalSafetySolver extends DistrEnvBDDSolver<GlobalSafet
      * In the paper these are the vertices in the set X.
      */
     private BDD graphGame_badVertices(int pos) {
-        return this.graphGame_badMarkingVertices(pos).orWith(this.graphGame_nondeterministic(pos)).orWith(this.graphGame_deadlock(pos));
+        return this.graphGame_badMarking(pos).orWith(this.graphGame_nondeterministic(pos)).orWith(this.graphGame_deadlock(pos));
     }
 
     /**
@@ -241,7 +250,7 @@ public class DistrEnvBDDGlobalSafetySolver extends DistrEnvBDDSolver<GlobalSafet
      * <p>
      * In the paper these are the vertices of type X1.
      */
-    protected BDD graphGame_badMarkingVertices(int pos) {
+    protected BDD graphGame_badMarking(int pos) {
         return this.getSolvingObject().getBadMarkings().stream()
                 .map(marking -> codeMarking(marking, pos))
                 .collect(or());
@@ -254,6 +263,8 @@ public class DistrEnvBDDGlobalSafetySolver extends DistrEnvBDDSolver<GlobalSafet
      * 2 transitions sharing a system place
      * are firable in a reachable marking
      * and both transitions are chosen.
+     * <p>
+     * A player 0 vertex cannot cause a deadlock, because no commitment is chosen yet.
      * <p>
      * In the paper these are the vertices of type X2a (and X2b).
      */
@@ -272,7 +283,7 @@ public class DistrEnvBDDGlobalSafetySolver extends DistrEnvBDDSolver<GlobalSafet
                 ret = ret.orWith(sharedSystemPlacesEncoded.andWith(this.chosen(t1, pos).andWith(this.chosen(t2, pos))));
             }
         }
-        return ret;
+        return notTop(pos).andWith(ret);
     }
 
     /**
@@ -282,6 +293,8 @@ public class DistrEnvBDDGlobalSafetySolver extends DistrEnvBDDSolver<GlobalSafet
      * no purely environmental transitions are enabled,
      * and some system transitions are enabled,
      * but player 0 has none in their commitment set (refuses all options).
+     * <p>
+     * A player 0 vertex cannot cause a deadlock, because no commitment is chosen yet.
      * <p>
      * In the paper these are the vertices of type X3.
      */
@@ -293,13 +306,13 @@ public class DistrEnvBDDGlobalSafetySolver extends DistrEnvBDDSolver<GlobalSafet
                 .map(transition -> this.enabled(transition, pos))
                 .collect(or());
         BDD noSystemChosen = this.getSolvingObject().getSystemTransitions().stream()
-                .map(transition -> this.chosen(transition, pos).not())
+                .map(transition -> this.enabled(transition, pos).andWith(this.chosen(transition, pos)).not())
                 .collect(and());
-        return noEnvironmentEnabled.andWith(someSystemEnabled).andWith(noSystemChosen);
+        return notTop(pos).andWith(noEnvironmentEnabled).andWith(someSystemEnabled).andWith(noSystemChosen);
     }
 
     protected BDD graphGame_player0Edges() {
-        return this.getSolvingObject().getSystemTransitions().stream()
+        return this.getSolvingObject().getSystemPlaces().stream()
                 .map(this::graphGame_player0Edge)
                 .collect(or());
     }
@@ -337,8 +350,9 @@ public class DistrEnvBDDGlobalSafetySolver extends DistrEnvBDDSolver<GlobalSafet
     protected BDD graphGame_winningVertices() throws CalculationInterruptedException {
         BDD reachableEdges = graphGame_reachableEdges(graphGame_initialVertex(PREDECESSOR));
         BDD poisonedVertices = graphGame_poisonedVertices(reachableEdges, graphGame_badVertices(PREDECESSOR));
-        BDD reachableVertices = getSuccs(reachableEdges);
-        return reachableVertices.and(poisonedVertices.not());
+        BDD reachableVertices = graphGame_reachableVertices(graphGame_initialVertex(PREDECESSOR));
+        //BDD reachableVertices = getSuccs(reachableEdges);
+        return reachableVertices.and(poisonedVertices.not().andWith(wellformed()));
     }
 
     protected BDD fire(Transition transition) {
@@ -354,19 +368,19 @@ public class DistrEnvBDDGlobalSafetySolver extends DistrEnvBDDSolver<GlobalSafet
                 .collect(and()));
     }
 
-    protected BDD onlyEnabledSystemTransitionsInCommitment(Place systemPlace, int pos) {
-        Collection<Transition> disabledTransitions = CollectionUtils.subtract(
+    protected BDD onlyChooseTransitionsInPostsetOfSystemPlace(Place systemPlace, int pos) {
+        Collection<Transition> unrelatedTransitions = CollectionUtils.subtract(
                 this.getSolvingObject().getSystemTransitions(),
-                this.getSolvingObject().getTransitionsEnabledByPlace(systemPlace));
+                systemPlace.getPostset());
         return codePlace(systemPlace, pos, PARTITION_OF_SYSTEM_PLAYER)
-                .impWith(disabledTransitions.stream()
+                .impWith(unrelatedTransitions.stream()
                         .map(transition -> codeSystemTransition(transition, pos).not())
                         .collect(and()));
     }
 
-    protected BDD onlyEnabledSystemTransitionsInCommitment(int pos) {
+    protected BDD onlyChooseTransitionsInPostsetOfSystemPlace(int pos) {
         return this.getSolvingObject().getSystemPlaces().stream()
-                .map(place -> onlyEnabledSystemTransitionsInCommitment(place, pos))
+                .map(place -> onlyChooseTransitionsInPostsetOfSystemPlace(place, pos))
                 .collect(and());
     }
 
@@ -388,12 +402,16 @@ public class DistrEnvBDDGlobalSafetySolver extends DistrEnvBDDSolver<GlobalSafet
         return TRANSITIONS[PREDECESSOR].buildEquals(TRANSITIONS[SUCCESSOR]);
     }
 
+    protected BDD nothingChosen(int pos) {
+        return TRANSITIONS[pos].ithVar(0);
+    }
+
     protected BDD transmitPoison(BDD poisoned, BDD allEdges, BDD existsEdges) {
         BDD poisonedAsSuccessor = shiftFirst2Second(poisoned);
         BDD successorVariables = getVariables(SUCCESSOR);
-        BDD forall = allEdges.exist(successorVariables) // there is an edge controlled by player 0
-                .and((allEdges.imp(poisonedAsSuccessor)).forAll(successorVariables)); // and every edge controlled by player 0 leads into a poisoned vertex
-        BDD exists = (existsEdges.and(poisonedAsSuccessor)).exist(successorVariables); // there is an edge controlled by player 1 leading into a a poisoned vertex
+        BDD forall = allEdges.exist(successorVariables) /* there is an edge controlled by player 0 */
+                .and((allEdges.imp(poisonedAsSuccessor)).forAll(successorVariables)); /* and every edge controlled by player 0 leads into a poisoned vertex */
+        BDD exists = (existsEdges.and(poisonedAsSuccessor)).exist(successorVariables); /* there is an edge controlled by player 1 leading into a a poisoned vertex */
         return forall.or(exists).and(wellformed());
     }
 
@@ -423,8 +441,11 @@ public class DistrEnvBDDGlobalSafetySolver extends DistrEnvBDDSolver<GlobalSafet
         /* only places that exist may be encoded */
         BDD ret = getOne();
         ret.andWith(onlyExistingPlacesInMarking(pos));
-        /* only transitions in the postset of the system player may be in the commitment */
-        ret.andWith(onlyEnabledSystemTransitionsInCommitment(pos));
+        /*
+         * only transitions in the postset of the system player may be in the commitment.
+         * in top states there is no commitment set, thus there are no constraints on it.
+         */
+        ret.andWith(notTop(pos).impWith(onlyChooseTransitionsInPostsetOfSystemPlace(pos)));
 
         return ret;
     }
@@ -484,7 +505,7 @@ public class DistrEnvBDDGlobalSafetySolver extends DistrEnvBDDSolver<GlobalSafet
 
     @Override
     protected BDD calcSystemTransition(Transition transition) {
-        return graphGame_player0Edge(transition);
+        throw new UnsupportedOperationException();
     }
 
     @Override
@@ -546,25 +567,36 @@ public class DistrEnvBDDGlobalSafetySolver extends DistrEnvBDDSolver<GlobalSafet
         return graphGame_winningVertices();
     }
 
+    @Override
+    protected BDD calcDCSs() throws CalculationInterruptedException {
+        return this.graphGame_reachableVertices(this.graphGame_initialVertex(PREDECESSOR));
+    }
+
+    @Override
+    public boolean hasFired(Transition t, BDD source, BDD target) {
+        BDD edge = source.and(shiftFirst2Second(target));
+        return !graphGame_player1Edge(t).and(edge).isZero();
+    }
+
     /* </overwrites for inheritance> */
 
     /* <decode> */
 
-    private String decodePlayer(byte[] dcs, int pos, int partition) {
+    private Optional<Place> decodePlayer(byte[] dcs, int pos, int partition) {
         int id = decodeInteger(dcs, PLACES[pos][partition]);
         if (id == -1) {
-            return "?";
+            return Optional.empty();
         }
         for (Place place : this.getSolvingObject().getDevidedPlaces()[partition]) {
             if (getGame().getID(place) == id) {
-                return place.getId();
+                return Optional.of(place);
             }
         }
         throw new IllegalStateException("place with id " + id + " in partition " + partition + " encountered");
         //return "!" + id;
     }
 
-    private String decodeCommitment(byte[] dcs, int pos) {
+    private Map<Integer, List<Transition>> decodeCommitment(byte[] dcs, int pos) {
         List<Transition> yes = new LinkedList<>();
         List<Transition> no = new LinkedList<>();
         List<Transition> undecided = new LinkedList<>();
@@ -577,29 +609,58 @@ public class DistrEnvBDDGlobalSafetySolver extends DistrEnvBDDSolver<GlobalSafet
                 case UNKNOWN -> undecided.add(transition);
             }
         }
+        return Map.of(
+                TRUE, Collections.unmodifiableList(yes),
+                FALSE, Collections.unmodifiableList(no),
+                UNKNOWN, Collections.unmodifiableList(undecided)
+        );
+
+    }
+
+    private static String commitmentToVerboseString(Map<Integer, List<Transition>> commitment) {
         Function<List<Transition>, String> stringify = list -> "{" + list.stream().map(Transition::getId).collect(Collectors.joining(", ")) + "}";
         StringJoiner sj = new StringJoiner(" ");
-        if (!yes.isEmpty()) {
-            sj.add("+" + stringify.apply(yes));
+        if (!commitment.get(TRUE).isEmpty()) {
+            sj.add("+" + stringify.apply(commitment.get(TRUE)));
         }
-        if (!no.isEmpty()) {
-            sj.add("-" + stringify.apply(no));
+        if (!commitment.get(UNKNOWN).isEmpty()) {
+            sj.add("?" + stringify.apply(commitment.get(UNKNOWN)));
+        }
+        if (!commitment.get(FALSE).isEmpty()) {
+            sj.add("-" + stringify.apply(commitment.get(FALSE)));
+        }
+        return sj.toString();
+    }
+
+    private static String commitmentToConciseString(Map<Integer, List<Transition>> commitment, Place systemPlace) {
+        Function<List<Transition>, String> stringify = list -> "{" + list.stream()
+                .filter(transition -> systemPlace.getPostset().contains(transition))
+                .map(Transition::getId)
+                .collect(Collectors.joining(", ")) + "}";
+        StringJoiner sj = new StringJoiner(" ");
+        if (!commitment.get(TRUE).isEmpty()) {
+            sj.add("+" + stringify.apply(commitment.get(TRUE)));
+        }
+        if (!commitment.get(UNKNOWN).isEmpty()) {
+            sj.add("?" + stringify.apply(commitment.get(UNKNOWN)));
         }
         return sj.toString();
     }
 
     protected String decodeVertex(byte[] dcs, int pos) {
         String stringifiedEnvPlayerPlaces = IntStream.range(1, this.getSolvingObject().getMaxTokenCountInt())
-                .mapToObj(partition -> decodePlayer(dcs, pos, partition))
+                .mapToObj(partition -> decodePlayer(dcs, pos, partition).map(Node::getId).orElse("?"))
                 .collect(Collectors.joining(", "));
+        Place systemPlayer = decodePlayer(dcs, pos, PARTITION_OF_SYSTEM_PLAYER)
+                .orElseThrow(() -> new IllegalStateException("no system player"));
         StringBuilder ret = new StringBuilder();
-        ret.append("(s: ").append(decodePlayer(dcs, pos, PARTITION_OF_SYSTEM_PLAYER));
-        ret.append(" | e: ").append(stringifiedEnvPlayerPlaces).append(")\n");
+        ret.append("(s: ").append(systemPlayer.getId());
+        ret.append(" | e: ").append(stringifiedEnvPlayerPlaces).append(")");
         byte top = dcs[TOP[pos].vars()[0]];
         switch (top) {
-            case TRUE -> ret.insert(0, "T ").append(decodeCommitment(dcs, pos));
-            case FALSE -> ret.append(decodeCommitment(dcs, pos));
-            case UNKNOWN -> ret.append("T:? ").append(decodeCommitment(dcs, pos));
+            case TRUE -> ret.insert(0, "T ").append("\n").append(commitmentToVerboseString(decodeCommitment(dcs, pos)));
+            case FALSE -> ret.append("\n").append(commitmentToVerboseString(decodeCommitment(dcs, pos)));
+            case UNKNOWN -> ret.append("\nT:? ").append(commitmentToVerboseString(decodeCommitment(dcs, pos)));
         }
         return ret.toString();
     }
