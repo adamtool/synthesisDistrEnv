@@ -102,7 +102,8 @@ public class DistrEnvBDDSolverFactory extends LLSolverFactory<DistrEnvBDDSolverO
 
     @Override
     protected DistrEnvBDDSolver<GlobalSafety> getASafetySolver(PetriGameWithTransits game, Safety con, DistrEnvBDDSolverOptions options) throws SolvingException, NotSupportedGameException, NoSuitableDistributionFoundException, InvalidPartitionException {
-        con.getBadPlaces().stream()
+        game.getPlaces().stream()
+                .filter(game::isBad)
                 .map(place -> new Marking(game, Map.of(place.getId(), 1)))
                 .forEach(game::addFinalMarking);
         try {
