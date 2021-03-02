@@ -658,8 +658,8 @@ public class DistrEnvBDDGlobalSafetySolver extends DistrEnvBDDSolver<GlobalSafet
         ret.append(" | e: ").append(stringifiedEnvPlayerPlaces).append(")");
         byte top = dcs[TOP[pos].vars()[0]];
         switch (top) {
-            case TRUE -> ret.insert(0, "T ").append("\n").append(commitmentToVerboseString(decodeCommitment(dcs, pos)));
-            case FALSE -> ret.append("\n").append(commitmentToVerboseString(decodeCommitment(dcs, pos)));
+            case TRUE -> ret.insert(0, "T ");
+            case FALSE -> ret.append("\n").append(commitmentToConciseString(decodeCommitment(dcs, pos), systemPlayer));
             case UNKNOWN -> ret.append("\nT:? ").append(commitmentToVerboseString(decodeCommitment(dcs, pos)));
         }
         return ret.toString();
@@ -669,7 +669,7 @@ public class DistrEnvBDDGlobalSafetySolver extends DistrEnvBDDSolver<GlobalSafet
         boolean hasPredecessor = !BDDTools.notUsedByBin(dcs, getDcs_length(), PREDECESSOR);
         boolean hasSuccessor = !BDDTools.notUsedByBin(dcs, getDcs_length(), SUCCESSOR);
         if (!hasPredecessor && !hasSuccessor) {
-            return "(edge not defined) -> (edge not defined)";
+            return "(predecessor not defined) -> (successor not defined)";
         } else if (hasPredecessor && !hasSuccessor) {
             return decodeVertex(dcs, PREDECESSOR) + "\n-> (successor not defined)";
         } else if (!hasPredecessor) {
