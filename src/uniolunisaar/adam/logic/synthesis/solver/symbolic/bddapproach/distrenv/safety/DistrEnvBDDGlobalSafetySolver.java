@@ -52,6 +52,22 @@ public class DistrEnvBDDGlobalSafetySolver extends DistrEnvBDDSolver<GlobalSafet
     protected static final int PARTITION_OF_SYSTEM_PLAYER = 0;
 
     /*
+     * When the game is not concurrency preserving,
+     * there can be no token in a partition.
+     * This is marked by setting the partition's place to 0.
+     *
+     * For this to work the ids of the places must be
+     * 1 <= id <= number of places in partition.
+     * When the net is concurrency preserving,
+     * there is no need for a partition without a token.
+     * Then the id 0 must not have special semantics
+     * and can be used a normal id.
+     * Thus in the concurrency preserving case
+     * 0 <= id < number of places in partition.
+     */
+    protected static final int NO_TOKEN_IN_PARTITION = 0;
+
+    /*
      * The java source code variable (not bdd variable) 'pos' always means
      * 0 for the predecessor bdd variables and 1 for the successor bdd variables.
      */
@@ -103,7 +119,9 @@ public class DistrEnvBDDGlobalSafetySolver extends DistrEnvBDDSolver<GlobalSafet
         TOP = new BDDDomain[2];
         for (int pos : List.of(PREDECESSOR, SUCCESSOR)) {
             for (int partition = 0; partition < numberOfPartitions; partition++) {
-                PLACES[pos][partition] = this.getFactory().extDomain(this.getSolvingObject().getDevidedPlaces()[partition].size());
+                PLACES[pos][partition] = this.getFactory().extDomain(
+                        this.getSolvingObject().getDevidedPlaces()[partition].size()
+                                + (this.getSolvingObject().isConcurrencyPreserving() ? 0 : 1));
 
                 /* for every system transition the system player must choose whether or not to allow that transition. */
                 TRANSITIONS[pos] = this.getFactory().extDomain(BigInteger.TWO.pow(this.getSolvingObject().getSystemTransitions().size()));
@@ -143,7 +161,7 @@ public class DistrEnvBDDGlobalSafetySolver extends DistrEnvBDDSolver<GlobalSafet
     }
 
     protected BDD graphGame_initialVertex(int pos) {
-        return codeMarking(this.getGame().getInitialMarking(), pos)
+        return codeMarking(this.getGame().getInitialMarking(), pos, true)
                 /* the system must choose it's initial commitment set. */
                 .andWith(top(pos))
                 .andWith(nothingChosen(pos));
@@ -252,7 +270,7 @@ public class DistrEnvBDDGlobalSafetySolver extends DistrEnvBDDSolver<GlobalSafet
      */
     protected BDD graphGame_badMarking(int pos) {
         return this.getSolvingObject().getBadMarkings().stream()
-                .map(marking -> codeMarking(marking, pos))
+                .map(marking -> codeMarking(marking, pos, false))
                 .collect(or());
     }
 
@@ -356,16 +374,67 @@ public class DistrEnvBDDGlobalSafetySolver extends DistrEnvBDDSolver<GlobalSafet
     }
 
     protected BDD fire(Transition transition) {
+        PetriGameWithTransits game = this.getSolvingObject().getGame();
+
         Set<Place> pre = transition.getPreset();
-        return enabled(transition, PREDECESSOR).andWith(this.streamPartitions()
-                .mapToObj(partition -> this.getSolvingObject().getDevidedPlaces()[partition].stream()
-                        .map(place -> {
-                            Place successorPlace = pre.contains(place) ? getSuitableSuccessor(place, transition) : place;
-                            return codePlace(place, PREDECESSOR, partition)
-                                    .andWith(codePlace(successorPlace, SUCCESSOR, partition));
-                        })
-                        .collect(or()))
-                .collect(and()));
+        Set<Place> post = transition.getPostset();
+
+        Map<Integer, Place> prePartitionToPlace = pre.stream()
+                .collect(Collectors.toMap(game::getPartition, Function.identity()));
+        Map<Integer, Place> postPartitionToPlace = post.stream()
+                .collect(Collectors.toMap(game::getPartition, Function.identity()));
+
+        Set<Integer> prePartitions = pre.stream()
+                .map(game::getPartition)
+                .collect(Collectors.toSet());
+        Set<Integer> postPartitions = post.stream()
+                .map(game::getPartition)
+                .collect(Collectors.toSet());
+
+        /* partitions that had a token before the transition has fired, but don't have one afterwards */
+        /* CP => nothing consumed */
+        assert !getSolvingObject().isConcurrencyPreserving() || CollectionUtils.subtract(prePartitions, postPartitions).isEmpty();
+        BDD consumed = CollectionUtils.subtract(prePartitions, postPartitions).stream()
+                .map(partition -> codePlace(prePartitionToPlace.get(partition), PREDECESSOR, partition).andWith(notUsedToken(SUCCESSOR, partition)))
+                .collect(and());
+        /*
+         * notUsedToken(SUCCESSOR, partition) is equal to codePlace(0, SUCCESSOR, partition).
+         * This could be problematic, because in the concurrency preserving case
+         * the place id 0 does refer to an actual place.
+         * But in the concurrency preserving case
+         * no token can ever be taken out of a partition,
+         * but only be moved within the partition.
+         * Thus there can never ba a partition without a token
+         * and this code is never executed when it could be problematic.
+         */
+
+        /* partitions that had no token before the transition has fired, but have one afterwards */
+        /* CP => nothing produced */
+        assert !getSolvingObject().isConcurrencyPreserving() || CollectionUtils.subtract(postPartitions, prePartitions).isEmpty();
+        BDD produced = CollectionUtils.subtract(postPartitions, prePartitions).stream()
+                .map(partition -> notUsedToken(PREDECESSOR, partition).andWith(codePlace(postPartitionToPlace.get(partition), SUCCESSOR, partition)))
+                .collect(and());
+
+        /* partitions that have a token before and after the transition fires */
+        BDD moved = CollectionUtils.intersection(postPartitions, prePartitions).stream()
+                .map(partition -> codePlace(prePartitionToPlace.get(partition), PREDECESSOR, partition).andWith(codePlace(postPartitionToPlace.get(partition), SUCCESSOR, partition)))
+                .collect(and());
+
+        /* partitions that have no contact with the transition */
+        BDD unaffected = this.streamPartitions()
+                .filter(o -> !prePartitions.contains(o))
+                .filter(o -> !postPartitions.contains(o))
+                .mapToObj(this::markingEqual)
+                .collect(and())
+                .andWith(onlyExistingPlacesInMarking(PREDECESSOR))
+                .andWith(onlyExistingPlacesInMarking(SUCCESSOR));
+
+        BDD flows = consumed
+                .andWith(produced)
+                .andWith(moved)
+                .andWith(unaffected);
+
+        return enabled(transition, PREDECESSOR).andWith(flows);
     }
 
     protected BDD onlyChooseTransitionsInPostsetOfSystemPlace(Place systemPlace, int pos) {
@@ -387,14 +456,18 @@ public class DistrEnvBDDGlobalSafetySolver extends DistrEnvBDDSolver<GlobalSafet
     protected BDD onlyExistingPlacesInMarking(int pos) {
         return this.streamPartitions()
                 .mapToObj(partition -> this.getSolvingObject().getDevidedPlaces()[partition].stream()
-                        .map(place -> codePlace(place, pos, partition))
+                        .map(place -> codePlace(place, pos, partition).orWith(notUsedToken(pos, partition)))
                         .collect(or()))
                 .collect(and());
     }
 
+    protected BDD markingEqual(int partition) {
+        return PLACES[PREDECESSOR][partition].buildEquals(PLACES[SUCCESSOR][partition]);
+    }
+
     protected BDD markingsEqual() {
         return this.streamPartitions()
-                .mapToObj(partition -> PLACES[PREDECESSOR][partition].buildEquals(PLACES[SUCCESSOR][partition]))
+                .mapToObj(partition -> markingEqual(partition))
                 .collect(and());
     }
 
@@ -445,7 +518,13 @@ public class DistrEnvBDDGlobalSafetySolver extends DistrEnvBDDSolver<GlobalSafet
          * only transitions in the postset of the system player may be in the commitment.
          * in top states there is no commitment set, thus there are no constraints on it.
          */
-        ret.andWith(notTop(pos).impWith(onlyChooseTransitionsInPostsetOfSystemPlace(pos)));
+        /* TODO
+         *  If the system is in a state without a system token,
+         *  we don't know which system transitions could be enabled in the future.
+         *  Not constraining probably increases the state space,
+         *  but should not result in mistakes.
+         */
+        //ret.andWith(notTop(pos).impWith(onlyChooseTransitionsInPostsetOfSystemPlace(pos)));
 
         return ret;
     }
@@ -462,11 +541,44 @@ public class DistrEnvBDDGlobalSafetySolver extends DistrEnvBDDSolver<GlobalSafet
         return TOP[pos].ithVar(0);
     }
 
-    protected BDD codeMarking(Marking marking, int pos) {
-        return this.getGame().getPlaces().stream()
-                .filter(place -> marking.getToken(place).getValue() > 0)
-                .map(place -> codePlace(place, pos, this.getGame().getPartition(place)))
+    /**
+     * For the initial marking we want to encode the exact marking.
+     * But for bad Markings we want to compare,
+     * if a given marking contains the bad marking.
+     * For the latter we are not interested in encoding
+     * that a partition is without a marking,
+     * because actually want to include all markings,
+     * that are greater (>=) then the bad marking.
+     */
+    protected BDD codeMarking(Marking marking, int pos, boolean encodeMissingToken) {
+        return this.streamPartitions()
+                .mapToObj(partition -> {
+                    Optional<Place> place = getPlaceOfPartitionInMarking(marking, partition);
+                    if (place.isPresent()) {
+                        return codePlace(place.get(), pos, partition);
+                    } else if (encodeMissingToken) {
+                        return notUsedToken(pos, partition);
+                    } else {
+                        return getOne();
+                    }
+                })
                 .collect(and());
+    }
+
+    /**
+     * Find for a given partition, that place, that has a token in the given marking.
+     * <p>
+     * Since there is exactly one token in every partition for concurrency preserving nets,
+     * and at most one token for not concurrency preserving nets,
+     * this place is unique, if it exists.
+     */
+    protected Optional<Place> getPlaceOfPartitionInMarking(Marking marking, int partition) {
+        Set<Place> markedPlacesWithMatchingPartition = this.getGame().getPlaces().stream()
+                .filter(place -> !marking.getToken(place).isOmega() && marking.getToken(place).getValue() > 0)
+                .filter(place -> this.getGame().getPartition(place) == partition)
+                .collect(Collectors.toSet());
+        assert markedPlacesWithMatchingPartition.size() <= 1;
+        return markedPlacesWithMatchingPartition.stream().findAny();
     }
 
     /**

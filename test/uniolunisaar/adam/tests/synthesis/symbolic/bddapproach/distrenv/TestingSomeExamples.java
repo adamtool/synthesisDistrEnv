@@ -70,12 +70,12 @@ public class TestingSomeExamples {
 //              { "existssafety/toyexamples/unfair8.apt", SYS, PARTITION_TODO }, // wrong winning condition
 //              { "existssafety/toyexamples/unfair9.apt", ENV, PARTITION_TODO }, // wrong winning condition
 //              { "existssafety/toyexamples/unfair10.apt", SYS, PARTITION_TODO }, // wrong winning condition
-//              { "forallsafety/2env/paul.apt", SYS, PARTITIONED_IN_FILE }, // not concurrency preserving (fixed in chasing.apt)
+                { "forallsafety/2env/paul.apt", SYS, PARTITIONED_IN_FILE },
 //              { "forallsafety/boundedunfolding/causalmemory.apt", ENV, PARTITION_IMPOSSIBLE }, // possible partitions are {{ s0, s1, s2, s5 }, { s3, s4 }} and {{ s0, s5 }, { s1, s2 }, { s3, s4 }}. both are not valid.
-//              { "forallsafety/boundedunfolding/finiteWithBad.apt", SYS, AUTO_PARTITION }, // not concurrency preserving
-//              { "forallsafety/boundedunfolding/firstTry.apt", SYS, AUTO_PARTITION }, // not concurrency preserving
-//              { "forallsafety/boundedunfolding/secondTry.apt", SYS, AUTO_PARTITION }, // not concurrency preserving
-//              { "forallsafety/boundedunfolding/thirdTry.apt", SYS, AUTO_PARTITION }, // not concurrency preserving
+                { "forallsafety/boundedunfolding/finiteWithBad.apt", SYS, AUTO_PARTITION },
+                { "forallsafety/boundedunfolding/firstTry.apt", SYS, AUTO_PARTITION },
+                { "forallsafety/boundedunfolding/secondTry.apt", SYS, AUTO_PARTITION },
+                { "forallsafety/boundedunfolding/thirdTry.apt", SYS, AUTO_PARTITION },
 //              { "forallsafety/boundedunfolding/txt.apt", UNKNOWN, AUTO_PARTITION }, // no system token in reachable marking
 //              { "forallsafety/boundedunfolding/txt2.apt", UNKNOWN, AUTO_PARTITION }, // no system token in reachable marking
                 { "forallsafety/constructedExample/constructedExample.apt", SYS, AUTO_PARTITION },
@@ -83,7 +83,7 @@ public class TestingSomeExamples {
 //              { "forallsafety/cornercases/unreachableEnvTransition.apt", UNKNOWN, AUTO_PARTITION }, // no system token in reachable marking
                 { "forallsafety/cornercases/unreachableEnvTransition2.apt", SYS, List.of(Set.of("S1", "S2"), Set.of("E0", "E2", "E3"), Set.of("E1", "E4")) },
                 { "forallsafety/deadlock/nondetDeadlock.apt", SYS, List.of(Set.of("s0", "s1", "s2"), Set.of("E", "r1", "EL", "r2")) },
-//              { "forallsafety/deadlock/nondetDeadlock0.apt", SYS, PARTITION_TODO }, // not concurrency preserving
+                { "forallsafety/deadlock/nondetDeadlock0.apt", SYS, PARTITION_TODO },
                 { "forallsafety/firstExamplePaper/firstExamplePaper.apt", SYS, AUTO_PARTITION },
                 { "forallsafety/firstExamplePaper/firstExamplePaper_extended.apt", ENV, AUTO_PARTITION },
 //              { "forallsafety/jhh/myexample0.apt", ENV, PARTITION_TODO }, // no system
@@ -93,8 +93,8 @@ public class TestingSomeExamples {
 //              { "forallsafety/jhh/myexample3.apt", SYS, AUTO_PARTITION }, // no system token in reachable marking
                 { "forallsafety/jhh/myexample4.apt", ENV, AUTO_PARTITION },
                 { "forallsafety/jhh/myexample7.apt", PROBABLY_SYS, AUTO_PARTITION }, // to big to understand
-//              { "forallsafety/jhh/robots_false.apt", UNKNOWN, AUTO_PARTITION }, // not concurrency preserving
-//              { "forallsafety/jhh/robots_true.apt", UNKNOWN, AUTO_PARTITION }, // not concurrency preserving
+                { "forallsafety/jhh/robots_false.apt", PROBABLY_ENV, AUTO_PARTITION }, // to big to understand
+                { "forallsafety/jhh/robots_true.apt", PROBABLY_SYS, AUTO_PARTITION }, // to big to understand
                 { "forallsafety/ma_vsp/vsp_1.apt", SYS, AUTO_PARTITION }, // no bad places -> cannot loose
                 { "forallsafety/ma_vsp/vsp_1_withBadPlaces.apt", PROBABLY_SYS, AUTO_PARTITION },
 //              { "forallsafety/nm/independentNets.apt", SYS, AUTO_PARTITION }, // no system token in reachable marking
@@ -105,7 +105,7 @@ public class TestingSomeExamples {
                 { "forallsafety/noStrategy/lateSameDecision.apt", ENV, AUTO_PARTITION },
                 { "forallsafety/testingNets/envSkipsSys.apt", ENV, AUTO_PARTITION },
                 { "forallsafety/testingNets/infiniteSystemTrysToAvoidEnvUseBadPlace.apt", ENV, AUTO_PARTITION },
-//              { "forallsafety/tests/testNotStartingMcut.apt", UNKNOWN, AUTO_PARTITION }, // not concurrency preserving
+                { "forallsafety/tests/testNotStartingMcut.apt", SYS, AUTO_PARTITION },
                 { "forallsafety/type2/separateEnvSys.apt", SYS, AUTO_PARTITION },
                 { "~/work/nets/accessor.apt", SYS, PARTITIONED_IN_FILE },
                 { "~/work/nets/chasing.apt", SYS, PARTITIONED_IN_FILE },
@@ -160,7 +160,7 @@ public class TestingSomeExamples {
 
     @Test(dataProvider = "examples")
     public static void isSingleEnv(String fileName, boolean unused, List<Set<String>> partition) throws NotSupportedGameException, ParseException, IOException, CouldNotCalculateException {
-        PGTools.checkExactlyOneSysToken(game(fileName, partition));
+        PGTools.checkAtMostOneSysToken(game(fileName, partition));
     }
 
     @Test(dataProvider = "examples")
