@@ -24,6 +24,7 @@ import uniolunisaar.adam.exceptions.synthesis.pgwt.NotSupportedGameException;
 import uniolunisaar.adam.exceptions.synthesis.pgwt.SolvingException;
 import uniolunisaar.adam.logic.synthesis.builder.twoplayergame.symbolic.bddapproach.BDDGraphAndGStrategyBuilder;
 import uniolunisaar.adam.logic.synthesis.pgwt.calculators.CalculatorIDs;
+import uniolunisaar.adam.logic.synthesis.pgwt.calculators.ConcurrencyPreservingGamesCalculator;
 import uniolunisaar.adam.logic.synthesis.solver.symbolic.bddapproach.distrenv.DistrEnvBDDSolver;
 import uniolunisaar.adam.logic.synthesis.solver.symbolic.bddapproach.distrenv.DistrEnvBDDSolverFactory;
 import uniolunisaar.adam.logic.synthesis.solver.symbolic.bddapproach.distrenv.safety.DistrEnvBDDGlobalSafetySolver;
@@ -300,6 +301,7 @@ public class TestingSomeExamples {
 
     private static PetriGameWithTransits game(String fileName, List<Set<String>> partition) throws NotSupportedGameException, CouldNotCalculateException, ParseException, IOException {
         PetriGameWithTransits game = PGTools.getPetriGame(path(fileName), false, false);
+        game.addExtensionCalculator(CalculatorIDs.CONCURRENCY_PRESERVING.name(), new ConcurrencyPreservingGamesCalculator());
         if (partition != PARTITIONED_IN_FILE) {
             for (Place place : game.getPlaces()) {
                 place.removeExtension(AdamExtensions.token.name());
