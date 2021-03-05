@@ -49,7 +49,20 @@ public class DistrEnvBDDSolvingObject<W extends Condition<W>> extends BDDSolving
         if (!game.getBounded().isSafe()) {
             throw new NetNotSafeException(game.getBounded().unboundedPlace.toString(), game.getBounded().sequence.toString());
         }
-        PGTools.checkAtMostOneSysToken(game);
+        if (isConcurrencyPreserving()) {
+            /*
+             * For the encoding all system places must have the same partition,
+             * with out any environment places in the same partition.
+             * At the same time every partition must have exactly one token
+             * in every reachable marking if the net is concurrency preserving.
+             *
+             * Those properties cannot hold for a concurrency preserving net,
+             * that temporarily has no system token.
+             */
+            PGTools.checkExactlyOneSysToken(game);
+        } else {
+            PGTools.checkAtMostOneSysToken(game);
+        }
     }
 
     @Override
