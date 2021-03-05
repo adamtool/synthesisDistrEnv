@@ -48,10 +48,9 @@ public class TestingSomeExamples {
     private static final List<Set<String>> AUTO_PARTITION = Collections.emptyList();
     private static final List<Set<String>> PARTITIONED_IN_FILE = null;
     private static final List<Set<String>> PARTITION_TODO = AUTO_PARTITION;
-    private static final List<Set<String>> PARTITION_IMPOSSIBLE = null;
 
     private final static Object[] paul = { "forallsafety/2env/paul.apt", SYS, PARTITIONED_IN_FILE };
-    private final static Object[] causalmemory = { "forallsafety/boundedunfolding/causalmemory.apt", ENV, PARTITION_IMPOSSIBLE }; // possible partitions are {{ s0, s1, s2, s5 }, { s3, s4 }} and {{ s0, s5 }, { s1, s2 }, { s3, s4 }}. both are not valid.
+    private final static Object[] causalmemory = { "forallsafety/boundedunfolding/causalmemory.apt", ENV, AUTO_PARTITION };
     private final static Object[] finiteWithBad = { "forallsafety/boundedunfolding/finiteWithBad.apt", SYS, AUTO_PARTITION };
     private final static Object[] firstTry = { "forallsafety/boundedunfolding/firstTry.apt", SYS, AUTO_PARTITION };
     private final static Object[] secondTry = { "forallsafety/boundedunfolding/secondTry.apt", SYS, AUTO_PARTITION };
@@ -60,10 +59,10 @@ public class TestingSomeExamples {
     private final static Object[] txt2 = { "forallsafety/boundedunfolding/txt2.apt", UNKNOWN, AUTO_PARTITION }; // no system
     private final static Object[] constructedExample = { "forallsafety/constructedExample/constructedExample.apt", SYS, AUTO_PARTITION };
     private final static Object[] constructedExampleWithoutLoop = { "forallsafety/constructedExampleWithoutLoop/constructedExampleWithoutLoop.apt", SYS, AUTO_PARTITION };
-    private final static Object[] unreachableEnvTransition = { "forallsafety/cornercases/unreachableEnvTransition.apt", SYS, PARTITION_IMPOSSIBLE }; // no bad marking => system wins
-    private final static Object[] unreachableEnvTransition2 = { "forallsafety/cornercases/unreachableEnvTransition2.apt", SYS, List.of(Set.of("S1", "S2"), Set.of("E0", "E2", "E3"), Set.of("E1", "E4")) };
-    private final static Object[] nondetDeadlock = { "forallsafety/deadlock/nondetDeadlock.apt", SYS, List.of(Set.of("s0", "s1", "s2"), Set.of("E", "r1", "EL", "r2")) };
-    private final static Object[] nondetDeadlock0 = { "forallsafety/deadlock/nondetDeadlock0.apt", SYS, PARTITION_TODO };
+    private final static Object[] unreachableEnvTransition = { "forallsafety/cornercases/unreachableEnvTransition.apt", SYS, List.of(Set.of("S"), Set.of("E1", "E3"), Set.of("E2", "E4")) }; // no bad marking => system wins, automatic partitioning does not work for this one (2021-03-06)
+    private final static Object[] unreachableEnvTransition2 = { "forallsafety/cornercases/unreachableEnvTransition2.apt", SYS, AUTO_PARTITION };
+    private final static Object[] nondetDeadlock = { "forallsafety/deadlock/nondetDeadlock.apt", SYS, AUTO_PARTITION };
+    private final static Object[] nondetDeadlock0 = { "forallsafety/deadlock/nondetDeadlock0.apt", SYS, AUTO_PARTITION };
     private final static Object[] firstExamplePaper = { "forallsafety/firstExamplePaper/firstExamplePaper.apt", SYS, AUTO_PARTITION };
     private final static Object[] firstExamplePaper_extended = { "forallsafety/firstExamplePaper/firstExamplePaper_extended.apt", ENV, AUTO_PARTITION };
     private final static Object[] myexample0 = { "forallsafety/jhh/myexample0.apt", ENV, PARTITION_TODO }; // no system
