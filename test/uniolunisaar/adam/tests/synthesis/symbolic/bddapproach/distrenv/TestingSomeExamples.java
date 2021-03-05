@@ -43,11 +43,9 @@ public class TestingSomeExamples {
     private static final boolean SYS = true;
     private static final boolean PROBABLY_ENV = ENV;
     private static final boolean PROBABLY_SYS = SYS;
-    private static final boolean UNKNOWN = PROBABLY_SYS;
 
     private static final List<Set<String>> AUTO_PARTITION = Collections.emptyList();
     private static final List<Set<String>> PARTITIONED_IN_FILE = null;
-    private static final List<Set<String>> PARTITION_TODO = AUTO_PARTITION;
 
     private final static Object[] paul = { "forallsafety/2env/paul.apt", SYS, PARTITIONED_IN_FILE };
     private final static Object[] causalmemory = { "forallsafety/boundedunfolding/causalmemory.apt", ENV, AUTO_PARTITION };
@@ -55,8 +53,6 @@ public class TestingSomeExamples {
     private final static Object[] firstTry = { "forallsafety/boundedunfolding/firstTry.apt", SYS, AUTO_PARTITION };
     private final static Object[] secondTry = { "forallsafety/boundedunfolding/secondTry.apt", SYS, AUTO_PARTITION };
     private final static Object[] thirdTry = { "forallsafety/boundedunfolding/thirdTry.apt", SYS, AUTO_PARTITION };
-    private final static Object[] txt = { "forallsafety/boundedunfolding/txt.apt", UNKNOWN, AUTO_PARTITION }; // no system
-    private final static Object[] txt2 = { "forallsafety/boundedunfolding/txt2.apt", UNKNOWN, AUTO_PARTITION }; // no system
     private final static Object[] constructedExample = { "forallsafety/constructedExample/constructedExample.apt", SYS, AUTO_PARTITION };
     private final static Object[] constructedExampleWithoutLoop = { "forallsafety/constructedExampleWithoutLoop/constructedExampleWithoutLoop.apt", SYS, AUTO_PARTITION };
     private final static Object[] unreachableEnvTransition = { "forallsafety/cornercases/unreachableEnvTransition.apt", SYS, List.of(Set.of("S"), Set.of("E1", "E3"), Set.of("E2", "E4")) }; // no bad marking => system wins, automatic partitioning does not work for this one (2021-03-06)
@@ -65,8 +61,6 @@ public class TestingSomeExamples {
     private final static Object[] nondetDeadlock0 = { "forallsafety/deadlock/nondetDeadlock0.apt", SYS, AUTO_PARTITION };
     private final static Object[] firstExamplePaper = { "forallsafety/firstExamplePaper/firstExamplePaper.apt", SYS, AUTO_PARTITION };
     private final static Object[] firstExamplePaper_extended = { "forallsafety/firstExamplePaper/firstExamplePaper_extended.apt", ENV, AUTO_PARTITION };
-    private final static Object[] myexample0 = { "forallsafety/jhh/myexample0.apt", ENV, PARTITION_TODO }; // no system
-    private final static Object[] myexample00 = { "forallsafety/jhh/myexample00.apt", ENV, PARTITION_TODO }; // no system
     private final static Object[] myexample000 = { "forallsafety/jhh/myexample000.apt", ENV, AUTO_PARTITION }; // cp and no system token in reachable marking
     private final static Object[] myexample2 = { "forallsafety/jhh/myexample2.apt", SYS, AUTO_PARTITION }; // no bad marking => system wins
     private final static Object[] myexample3 = { "forallsafety/jhh/myexample3.apt", SYS, AUTO_PARTITION }; // no system token in reachable marking
@@ -79,8 +73,6 @@ public class TestingSomeExamples {
     private final static Object[] independentNets = { "forallsafety/nm/independentNets.apt", SYS, AUTO_PARTITION }; // no system token in reachable marking
     private final static Object[] minimal = { "forallsafety/nm/minimal.apt", ENV, AUTO_PARTITION }; // no system token in reachable marking
     private final static Object[] minimalNotFinishingEnv = { "forallsafety/nm/minimalNotFinishingEnv.apt", ENV, AUTO_PARTITION }; // no system token in reachable marking
-    private final static Object[] minimalOnlySys = { "forallsafety/nm/minimalOnlySys.apt", ENV, PARTITION_TODO }; // no environment
-    private final static Object[] trueconcurrent = { "forallsafety/nm/trueconcurrent.apt", ENV, PARTITION_TODO }; // no system
     private final static Object[] lateSameDecision = { "forallsafety/noStrategy/lateSameDecision.apt", ENV, AUTO_PARTITION };
     private final static Object[] envSkipsSys = { "forallsafety/testingNets/envSkipsSys.apt", ENV, AUTO_PARTITION };
     private final static Object[] infiniteSystemTrysToAvoidEnvUseBadPlace = { "forallsafety/testingNets/infiniteSystemTrysToAvoidEnvUseBadPlace.apt", ENV, AUTO_PARTITION };
@@ -93,18 +85,9 @@ public class TestingSomeExamples {
     private final static Object[] sysChooseNoSysEnabled = { "~/work/nets/sysChooseNoSysEnabled.apt", SYS, PARTITIONED_IN_FILE };
 
     @DataProvider
-    private static Object[][] all() {
-        return new Object[][] {
-
-        };
-    }
-
-    @DataProvider
     private static Object[][] concurrencyPreserving() {
         return new Object[][] {
                 causalmemory,
-                txt,
-                txt2,
                 constructedExample,
                 constructedExampleWithoutLoop,
                 unreachableEnvTransition,
@@ -112,16 +95,12 @@ public class TestingSomeExamples {
                 nondetDeadlock,
                 firstExamplePaper,
                 firstExamplePaper_extended,
-                myexample0,
-                myexample00,
                 myexample000,
                 myexample4,
                 myexample7,
                 vsp_1,
                 vsp_1_withBadPlaces,
                 minimal,
-                minimalOnlySys,
-                trueconcurrent,
                 lateSameDecision,
                 envSkipsSys,
                 infiniteSystemTrysToAvoidEnvUseBadPlace,
@@ -154,7 +133,7 @@ public class TestingSomeExamples {
     }
 
     @DataProvider
-    private static Object[][] netsWithTwoTeams() {
+    private static Object[][] all() {
         return new Object[][] {
                 paul,
                 causalmemory,
@@ -196,18 +175,6 @@ public class TestingSomeExamples {
     }
 
     @DataProvider
-    private static Object[][] netsWithoutTeams() {
-        return new Object[][] {
-                txt,
-                txt2,
-                myexample0,
-                myexample00,
-                minimalOnlySys,
-                trueconcurrent,
-        };
-    }
-
-    @DataProvider
     private static Object[][] specific() {
         return new Object[][] {
                 minimalNotFinishingEnv
@@ -221,7 +188,7 @@ public class TestingSomeExamples {
     private static final String inputDir = "/home/lukas/work/adam/github/synthesisDistrEnv/dependencies/examples/synthesis/";
     private static final String outputDir = "/home/lukas/tmp/work/";
 
-    @Test(dataProvider = "netsWithTwoTeams")
+    @Test(dataProvider = "all")
     public static void existsWinningStrategyTest(String fileName, boolean existsWinningStrategy, List<Set<String>> partition) throws Exception {
         assertEquals(solver(fileName, partition).existsWinningStrategy(), existsWinningStrategy);
     }
@@ -252,7 +219,7 @@ public class TestingSomeExamples {
         assertTrue(((Boolean) value), fileName + " is not concurrency preserving.");
     }
 
-    @Test(dataProvider = "netsWithTwoTeams")
+    @Test(dataProvider = "all")
     public static void hasTwoTeams(String fileName, boolean unused, List<Set<String>> partition) throws NotSupportedGameException, CouldNotCalculateException, ParseException, IOException {
         PetriGameWithTransits game = game(fileName, partition);
         boolean hasSys = game.getPlaces().stream().anyMatch(game::isSystem);
@@ -260,7 +227,7 @@ public class TestingSomeExamples {
         assertTrue(hasEnv && hasSys, fileName + " doesn't have two teams, it's not a game");
     }
 
-    @Test(dataProvider = "netsWithTwoTeams")
+    @Test(dataProvider = "all")
     public static void canCreateSolverTest(String fileName, boolean unused, List<Set<String>> partition) throws IOException, ParseException {
         try {
             solver(fileName, partition);
@@ -271,7 +238,7 @@ public class TestingSomeExamples {
         }
     }
 
-    @Test(dataProvider = "netsWithTwoTeams")
+    @Test(dataProvider = "specific")
     public static void renderGraph(String fileName, boolean existsWinningStrategy, List<Set<String>> partition) throws Exception {
         PetriGameWithTransits game = game(fileName, partition);
         DistrEnvBDDGlobalSafetySolver solver = (DistrEnvBDDGlobalSafetySolver) DistrEnvBDDSolverFactory.getInstance()
@@ -282,7 +249,7 @@ public class TestingSomeExamples {
         Thread.sleep(1000);
     }
 
-    @Test(dataProvider = "netsWithTwoTeams")
+    @Test(dataProvider = "specific")
     public static void renderGraphStrategy(String fileName, boolean existsWinningStrategy, List<Set<String>> partition) throws Exception {
         PetriGameWithTransits game = game(fileName, partition);
         DistrEnvBDDGlobalSafetySolver solver = (DistrEnvBDDGlobalSafetySolver) DistrEnvBDDSolverFactory.getInstance()
