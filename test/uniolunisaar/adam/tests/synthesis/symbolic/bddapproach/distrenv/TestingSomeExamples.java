@@ -86,10 +86,11 @@ public class TestingSomeExamples {
     private final static Object[] infiniteSystemTrysToAvoidEnvUseBadPlace = { "forallsafety/testingNets/infiniteSystemTrysToAvoidEnvUseBadPlace.apt", ENV, AUTO_PARTITION };
     private final static Object[] testNotStartingMcut = { "forallsafety/tests/testNotStartingMcut.apt", SYS, AUTO_PARTITION };
     private final static Object[] separateEnvSys = { "forallsafety/type2/separateEnvSys.apt", SYS, AUTO_PARTITION };
-    private final static Object[] accessor = { "~/work/nets/accessor.apt", SYS, PARTITIONED_IN_FILE };
-    private final static Object[] chasing = { "~/work/nets/chasing.apt", SYS, PARTITIONED_IN_FILE };
-    private final static Object[] decision = { "~/work/nets/decision.apt", PROBABLY_SYS, PARTITIONED_IN_FILE };
+    private final static Object[] accessor = { "~/work/nets/paper/accessor.apt", SYS, PARTITIONED_IN_FILE };
+    private final static Object[] chasing = { "~/work/nets/paper/chasing.apt", SYS, PARTITIONED_IN_FILE };
+    private final static Object[] decision = { "~/work/nets/paper/decision.apt", PROBABLY_SYS, PARTITIONED_IN_FILE };
     private final static Object[] different_choice = { "~/work/nets/different_choice.apt", ENV, PARTITIONED_IN_FILE };
+    private final static Object[] sysChooseNoSysEnabled = { "~/work/nets/sysChooseNoSysEnabled.apt", SYS, PARTITIONED_IN_FILE };
 
     @DataProvider
     private static Object[][] all() {
@@ -148,6 +149,7 @@ public class TestingSomeExamples {
                 independentNets,
                 minimalNotFinishingEnv,
                 testNotStartingMcut,
+                sysChooseNoSysEnabled
         };
     }
 
@@ -189,6 +191,7 @@ public class TestingSomeExamples {
                 chasing,
                 decision,
                 different_choice,
+                sysChooseNoSysEnabled
         };
     }
 
