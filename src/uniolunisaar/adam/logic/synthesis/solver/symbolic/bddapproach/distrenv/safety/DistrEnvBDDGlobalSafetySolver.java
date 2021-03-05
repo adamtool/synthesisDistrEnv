@@ -17,7 +17,6 @@ import java.util.stream.IntStream;
 import net.sf.javabdd.BDD;
 import net.sf.javabdd.BDDDomain;
 import org.apache.commons.collections4.CollectionUtils;
-import uniol.apt.adt.Node;
 import uniol.apt.adt.pn.Marking;
 import uniol.apt.adt.pn.Place;
 import uniol.apt.adt.pn.Transition;
@@ -706,18 +705,21 @@ public class DistrEnvBDDGlobalSafetySolver extends DistrEnvBDDSolver<GlobalSafet
 
     /* <decode> */
 
-    private Optional<Place> decodePlayer(byte[] dcs, int pos, int partition) {
+    private String decodePlayer(byte[] dcs, int pos, int partition) {
         int id = decodeInteger(dcs, PLACES[pos][partition]);
         if (id == -1) {
-            return Optional.empty();
-        }
-        for (Place place : this.getSolvingObject().getDevidedPlaces()[partition]) {
-            if (getGame().getID(place) == id) {
-                return Optional.of(place);
+            return "?";
+        } else if (id == 0 && !this.getSolvingObject().isConcurrencyPreserving()) {
+            return "-";
+        } else {
+            for (Place place : this.getSolvingObject().getDevidedPlaces()[partition]) {
+                if (getGame().getID(place) == id) {
+                    return place.getId();
+                }
             }
+            throw new IllegalStateException("place with id " + id + " in partition " + partition + " encountered");
+            //return "!" + id;
         }
-        throw new IllegalStateException("place with id " + id + " in partition " + partition + " encountered");
-        //return "!" + id;
     }
 
     private Map<Integer, List<Transition>> decodeCommitment(byte[] dcs, int pos) {
@@ -772,19 +774,25 @@ public class DistrEnvBDDGlobalSafetySolver extends DistrEnvBDDSolver<GlobalSafet
     }
 
     protected String decodeVertex(byte[] dcs, int pos) {
+        String systemPlayer = decodePlayer(dcs, pos, PARTITION_OF_SYSTEM_PLAYER);
         String stringifiedEnvPlayerPlaces = IntStream.range(1, this.getSolvingObject().getMaxTokenCountInt())
-                .mapToObj(partition -> decodePlayer(dcs, pos, partition).map(Node::getId).orElse("?"))
+                .mapToObj(partition -> decodePlayer(dcs, pos, partition))
                 .collect(Collectors.joining(", "));
-        Place systemPlayer = decodePlayer(dcs, pos, PARTITION_OF_SYSTEM_PLAYER)
-                .orElseThrow(() -> new IllegalStateException("no system player"));
         StringBuilder ret = new StringBuilder();
-        ret.append("(s: ").append(systemPlayer.getId());
+        ret.append("(s: ").append(systemPlayer);
         ret.append(" | e: ").append(stringifiedEnvPlayerPlaces).append(")");
         byte top = dcs[TOP[pos].vars()[0]];
-        switch (top) {
-            case TRUE -> ret.insert(0, "T ");
-            case FALSE -> ret.append("\n").append(commitmentToConciseString(decodeCommitment(dcs, pos), systemPlayer));
-            case UNKNOWN -> ret.append("\nT:? ").append(commitmentToVerboseString(decodeCommitment(dcs, pos)));
+        if (true) { // normal
+            switch (top) {
+                case TRUE -> ret.insert(0, "T ");
+                case FALSE -> ret.append("\n").append(
+                        systemPlayer.equals("?") || systemPlayer.equals("-")
+                                ? commitmentToVerboseString(decodeCommitment(dcs, pos))
+                                : commitmentToConciseString(decodeCommitment(dcs, pos), getGame().getPlace(systemPlayer)));
+                case UNKNOWN -> ret.append("\nT:? ").append(commitmentToVerboseString(decodeCommitment(dcs, pos)));
+            }
+        } else { // verbose
+            ret.append("\nT:").append(top).append(" ").append(commitmentToVerboseString(decodeCommitment(dcs, pos)));
         }
         return ret.toString();
     }
