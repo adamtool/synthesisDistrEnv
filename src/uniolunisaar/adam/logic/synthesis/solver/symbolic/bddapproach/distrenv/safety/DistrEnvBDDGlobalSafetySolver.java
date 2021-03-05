@@ -170,30 +170,18 @@ public class DistrEnvBDDGlobalSafetySolver extends DistrEnvBDDSolver<GlobalSafet
     }
 
     /**
-     * Encode an edge coming out of a player 0 vertex in the graph game.
-     * That edge corresponds to a petri game transition
-     * with the system player in it's preset.
-     * It is not responsible for firing the transition,
-     * so the marking remains unchanged.
-     * The only thing happening is player 0 choosing a commitment set.
+     * Encode all edge coming out of a player 0 vertex in the graph game.
+     * These only make player 0 choose a commitment set.
      * <p>
-     * These are edges where the successor vertices are those marked with TOP.
+     * These are edges where the predecessor vertices are those marked with TOP.
      * <p>
      * In the paper these are the edges of type E1.
      */
-    protected BDD graphGame_player0Edge(Place enteredSystemPlace) {
+    protected BDD graphGame_player0Edges() {
         BDD ret = getOne();
-
-        /*
-         * this only encodes the edge coming from the player 0 vertex.
-         * the transition is fired by player 1,
-         * who then sets TOP to inform the player
-         * that they have to choose a new commitment set.
-         * that means the marking changes in player 1's vertex, not here.
-         */
         ret.andWith(markingsEqual()).andWith(onlyExistingPlacesInMarking(PREDECESSOR));
 
-        /* the purpose of this transition is to remove the top. */
+        /* the purpose of this edge is to remove the top. */
         ret.andWith(top(PREDECESSOR)).andWith(notTop(SUCCESSOR));
 
         /*
@@ -340,12 +328,6 @@ public class DistrEnvBDDGlobalSafetySolver extends DistrEnvBDDSolver<GlobalSafet
                 .map(transition -> this.enabled(transition, pos).andWith(this.chosen(transition, pos)).not())
                 .collect(and());
         return notTop(pos).andWith(noEnvironmentEnabled).andWith(someSystemEnabled).andWith(noSystemChosen);
-    }
-
-    protected BDD graphGame_player0Edges() {
-        return this.getSolvingObject().getSystemPlaces().stream()
-                .map(this::graphGame_player0Edge)
-                .collect(or());
     }
 
     protected BDD graphGame_player1Edges() {
