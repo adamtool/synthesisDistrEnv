@@ -85,22 +85,18 @@ public class TestingSomeExamples {
     private final static Object[] sysChooseNoSysEnabled = { "~/work/nets/sysChooseNoSysEnabled.apt", SYS, PARTITIONED_IN_FILE };
 
     @DataProvider
-    private static Object[][] concurrencyPreserving() {
+    private static Object[][] concurrencyPreservingGames() {
         return new Object[][] {
-                causalmemory,
                 constructedExample,
                 constructedExampleWithoutLoop,
-                unreachableEnvTransition,
                 unreachableEnvTransition2,
                 nondetDeadlock,
                 firstExamplePaper,
                 firstExamplePaper_extended,
-                myexample000,
                 myexample4,
                 myexample7,
                 vsp_1,
                 vsp_1_withBadPlaces,
-                minimal,
                 lateSameDecision,
                 envSkipsSys,
                 infiniteSystemTrysToAvoidEnvUseBadPlace,
@@ -113,19 +109,23 @@ public class TestingSomeExamples {
     }
 
     @DataProvider
-    private static Object[][] notConcurrencyPreserving() {
+    private static Object[][] notConcurrencyPreservingGames() {
         return new Object[][] {
+                causalmemory, // the underlying net is cp
                 paul,
                 finiteWithBad,
                 firstTry,
                 secondTry,
                 thirdTry,
+                unreachableEnvTransition, // the underlying net is cp
                 nondetDeadlock0,
+                myexample000, // the underlying net is cp
                 myexample2,
                 myexample3,
                 robots_false,
                 robots_true,
                 independentNets,
+                minimal, // the underlying net is cp
                 minimalNotFinishingEnv,
                 testNotStartingMcut,
                 sysChooseNoSysEnabled
@@ -212,7 +212,7 @@ public class TestingSomeExamples {
         }
     }
 
-    @Test(dataProvider = "concurrencyPreserving")
+    @Test(dataProvider = "concurrencyPreservingGames")
     public static void isConcurrencyPreserving(String fileName, boolean unused, List<Set<String>> partition) throws NotSupportedGameException, CouldNotCalculateException, ParseException, IOException {
         Object value = game(fileName, partition).getValue(CalculatorIDs.CONCURRENCY_PRESERVING.name());
         assertEquals(value.getClass(), Boolean.class);
