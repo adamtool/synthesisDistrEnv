@@ -346,23 +346,35 @@ public class DistrEnvBDDGlobalSafetySolver extends DistrEnvBDDSolver<GlobalSafet
     }
 
     protected BDD graphGame_reachableVertices(BDD startVertex) throws CalculationInterruptedException {
+        return graphGame_reachableVertices(startVertex, null);
+    }
+
+    protected BDD graphGame_reachableVertices(BDD startVertex, Map<Integer, BDD> steps) throws CalculationInterruptedException {
         BDD edges = graphGame_Edges();
-        return fixpoint(getZero(), startVertex, Q -> Q.or(getSuccs(Q.and(edges))), null);
+        return fixpoint(getZero(), startVertex, Q -> Q.or(getSuccs(Q.and(edges))), steps);
     }
 
     protected BDD graphGame_reachableEdges(BDD startVertex) throws CalculationInterruptedException {
+        return graphGame_reachableEdges(startVertex, null);
+    }
+
+    protected BDD graphGame_reachableEdges(BDD startVertex, Map<Integer, BDD> steps) throws CalculationInterruptedException {
         //BDD vertices = graphGame_reachableVertices(startVertex);
         //return vertices.and(shiftFirst2Second(vertices));
 
         BDD edges = graphGame_Edges();
-        return fixpoint(getZero(), startVertex.and(edges), Q -> Q.or(getSuccs(Q).and(edges)), null);
+        return fixpoint(getZero(), startVertex.and(edges), Q -> Q.or(getSuccs(Q).and(edges)), steps);
     }
 
     protected BDD graphGame_poisonedVertices(BDD reachableEdges, BDD badVertices) throws CalculationInterruptedException {
+        return graphGame_poisonedVertices(reachableEdges, badVertices, null);
+    }
+
+    protected BDD graphGame_poisonedVertices(BDD reachableEdges, BDD badVertices, Map<Integer, BDD> steps) throws CalculationInterruptedException {
         BDD player0Edges = graphGame_player0Edges().and(reachableEdges);
         BDD player1Edges = graphGame_player1Edges().and(reachableEdges);
 
-        return fixpoint(getZero(), badVertices, Q -> Q.or(transmitPoison(Q, player0Edges, player1Edges)), null).and(wellformed());
+        return fixpoint(getZero(), badVertices, Q -> Q.or(transmitPoison(Q, player0Edges, player1Edges)), steps).or(badVertices).and(wellformed(PREDECESSOR));
     }
 
     protected BDD graphGame_winningVertices() throws CalculationInterruptedException {
