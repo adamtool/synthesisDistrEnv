@@ -42,82 +42,172 @@ public class TestingSomeExamples {
     private static final boolean SYS = true;
     private static final boolean PROBABLY_ENV = ENV;
     private static final boolean PROBABLY_SYS = SYS;
+    private static final boolean UNKNOWN = PROBABLY_SYS;
 
     private static final List<Set<String>> AUTO_PARTITION = Collections.emptyList();
     private static final List<Set<String>> PARTITIONED_IN_FILE = null;
     private static final List<Set<String>> PARTITION_TODO = AUTO_PARTITION;
     private static final List<Set<String>> PARTITION_IMPOSSIBLE = null;
 
+    private final static Object[] paul = { "forallsafety/2env/paul.apt", SYS, PARTITIONED_IN_FILE };
+    private final static Object[] causalmemory = { "forallsafety/boundedunfolding/causalmemory.apt", ENV, PARTITION_IMPOSSIBLE }; // possible partitions are {{ s0, s1, s2, s5 }, { s3, s4 }} and {{ s0, s5 }, { s1, s2 }, { s3, s4 }}. both are not valid.
+    private final static Object[] finiteWithBad = { "forallsafety/boundedunfolding/finiteWithBad.apt", SYS, AUTO_PARTITION };
+    private final static Object[] firstTry = { "forallsafety/boundedunfolding/firstTry.apt", SYS, AUTO_PARTITION };
+    private final static Object[] secondTry = { "forallsafety/boundedunfolding/secondTry.apt", SYS, AUTO_PARTITION };
+    private final static Object[] thirdTry = { "forallsafety/boundedunfolding/thirdTry.apt", SYS, AUTO_PARTITION };
+    private final static Object[] txt = { "forallsafety/boundedunfolding/txt.apt", UNKNOWN, AUTO_PARTITION }; // no system
+    private final static Object[] txt2 = { "forallsafety/boundedunfolding/txt2.apt", UNKNOWN, AUTO_PARTITION }; // no system
+    private final static Object[] constructedExample = { "forallsafety/constructedExample/constructedExample.apt", SYS, AUTO_PARTITION };
+    private final static Object[] constructedExampleWithoutLoop = { "forallsafety/constructedExampleWithoutLoop/constructedExampleWithoutLoop.apt", SYS, AUTO_PARTITION };
+    private final static Object[] unreachableEnvTransition = { "forallsafety/cornercases/unreachableEnvTransition.apt", SYS, PARTITION_IMPOSSIBLE }; // no bad marking => system wins
+    private final static Object[] unreachableEnvTransition2 = { "forallsafety/cornercases/unreachableEnvTransition2.apt", SYS, List.of(Set.of("S1", "S2"), Set.of("E0", "E2", "E3"), Set.of("E1", "E4")) };
+    private final static Object[] nondetDeadlock = { "forallsafety/deadlock/nondetDeadlock.apt", SYS, List.of(Set.of("s0", "s1", "s2"), Set.of("E", "r1", "EL", "r2")) };
+    private final static Object[] nondetDeadlock0 = { "forallsafety/deadlock/nondetDeadlock0.apt", SYS, PARTITION_TODO };
+    private final static Object[] firstExamplePaper = { "forallsafety/firstExamplePaper/firstExamplePaper.apt", SYS, AUTO_PARTITION };
+    private final static Object[] firstExamplePaper_extended = { "forallsafety/firstExamplePaper/firstExamplePaper_extended.apt", ENV, AUTO_PARTITION };
+    private final static Object[] myexample0 = { "forallsafety/jhh/myexample0.apt", ENV, PARTITION_TODO }; // no system
+    private final static Object[] myexample00 = { "forallsafety/jhh/myexample00.apt", ENV, PARTITION_TODO }; // no system
+    private final static Object[] myexample000 = { "forallsafety/jhh/myexample000.apt", ENV, AUTO_PARTITION }; // cp and no system token in reachable marking
+    private final static Object[] myexample2 = { "forallsafety/jhh/myexample2.apt", SYS, AUTO_PARTITION }; // no bad marking => system wins
+    private final static Object[] myexample3 = { "forallsafety/jhh/myexample3.apt", SYS, AUTO_PARTITION }; // no system token in reachable marking
+    private final static Object[] myexample4 = { "forallsafety/jhh/myexample4.apt", ENV, AUTO_PARTITION };
+    private final static Object[] myexample7 = { "forallsafety/jhh/myexample7.apt", PROBABLY_SYS, AUTO_PARTITION }; // to big to understand
+    private final static Object[] robots_false = { "forallsafety/jhh/robots_false.apt", PROBABLY_ENV, AUTO_PARTITION }; // to big to understand
+    private final static Object[] robots_true = { "forallsafety/jhh/robots_true.apt", PROBABLY_SYS, AUTO_PARTITION }; // to big to understand
+    private final static Object[] vsp_1 = { "forallsafety/ma_vsp/vsp_1.apt", SYS, AUTO_PARTITION }; // no bad places -> cannot loose
+    private final static Object[] vsp_1_withBadPlaces = { "forallsafety/ma_vsp/vsp_1_withBadPlaces.apt", PROBABLY_SYS, AUTO_PARTITION };
+    private final static Object[] independentNets = { "forallsafety/nm/independentNets.apt", SYS, AUTO_PARTITION }; // no system token in reachable marking
+    private final static Object[] minimal = { "forallsafety/nm/minimal.apt", ENV, AUTO_PARTITION }; // no system token in reachable marking
+    private final static Object[] minimalNotFinishingEnv = { "forallsafety/nm/minimalNotFinishingEnv.apt", ENV, AUTO_PARTITION }; // no system token in reachable marking
+    private final static Object[] minimalOnlySys = { "forallsafety/nm/minimalOnlySys.apt", ENV, PARTITION_TODO }; // no environment
+    private final static Object[] trueconcurrent = { "forallsafety/nm/trueconcurrent.apt", ENV, PARTITION_TODO }; // no system
+    private final static Object[] lateSameDecision = { "forallsafety/noStrategy/lateSameDecision.apt", ENV, AUTO_PARTITION };
+    private final static Object[] envSkipsSys = { "forallsafety/testingNets/envSkipsSys.apt", ENV, AUTO_PARTITION };
+    private final static Object[] infiniteSystemTrysToAvoidEnvUseBadPlace = { "forallsafety/testingNets/infiniteSystemTrysToAvoidEnvUseBadPlace.apt", ENV, AUTO_PARTITION };
+    private final static Object[] testNotStartingMcut = { "forallsafety/tests/testNotStartingMcut.apt", SYS, AUTO_PARTITION };
+    private final static Object[] separateEnvSys = { "forallsafety/type2/separateEnvSys.apt", SYS, AUTO_PARTITION };
+    private final static Object[] accessor = { "~/work/nets/accessor.apt", SYS, PARTITIONED_IN_FILE };
+    private final static Object[] chasing = { "~/work/nets/chasing.apt", SYS, PARTITIONED_IN_FILE };
+    private final static Object[] decision = { "~/work/nets/decision.apt", PROBABLY_SYS, PARTITIONED_IN_FILE };
+    private final static Object[] different_choice = { "~/work/nets/different_choice.apt", ENV, PARTITIONED_IN_FILE };
+
     @DataProvider
-    private static Object[][] examples() {
+    private static Object[][] all() {
         return new Object[][] {
-//              { "existssafety/escape/escape11.apt", ENV, PARTITION_TODO }, // wrong winning condition
-//              { "existssafety/infflowchains/infflowchains_env_0.apt", ENV, PARTITION_TODO }, // wrong winning condition
-//              { "existssafety/toyexamples/decision1.apt", ENV, PARTITION_TODO }, // wrong winning condition
-//              { "existssafety/toyexamples/decision2.apt", SYS, PARTITION_TODO }, // wrong winning condition
-//              { "existssafety/toyexamples/oneTransitionEnv1.apt", ENV, PARTITION_TODO }, // wrong winning condition
-//              { "existssafety/toyexamples/oneTransitionEnv2.apt", SYS, PARTITION_TODO }, // wrong winning condition
-//              { "existssafety/toyexamples/oneTransitionEnv3.apt", ENV, PARTITION_TODO }, // wrong winning condition
-//              { "existssafety/toyexamples/oneTransitionSys1.apt", ENV, PARTITION_TODO }, // wrong winning condition
-//              { "existssafety/toyexamples/oneTransitionSys2.apt", SYS, PARTITION_TODO }, // wrong winning condition
-//              { "existssafety/toyexamples/oneTransitionSys3.apt", SYS, PARTITION_TODO }, // wrong winning condition
-//              { "existssafety/toyexamples/safeEnvChain.apt", SYS, PARTITION_TODO }, // wrong winning condition
-//              { "existssafety/toyexamples/twoDecisions1.apt", ENV, PARTITION_TODO }, // wrong winning condition
-//              { "existssafety/toyexamples/twoDecisions2.apt", SYS, PARTITION_TODO }, // wrong winning condition
-//              { "existssafety/toyexamples/unfair1.apt", SYS, PARTITION_TODO }, // wrong winning condition
-//              { "existssafety/toyexamples/unfair3.apt", SYS, PARTITION_TODO }, // wrong winning condition
-//              { "existssafety/toyexamples/unfair7.apt", ENV, PARTITION_TODO }, // wrong winning condition
-//              { "existssafety/toyexamples/unfair8.apt", SYS, PARTITION_TODO }, // wrong winning condition
-//              { "existssafety/toyexamples/unfair9.apt", ENV, PARTITION_TODO }, // wrong winning condition
-//              { "existssafety/toyexamples/unfair10.apt", SYS, PARTITION_TODO }, // wrong winning condition
-                { "forallsafety/2env/paul.apt", SYS, PARTITIONED_IN_FILE },
-//              { "forallsafety/boundedunfolding/causalmemory.apt", ENV, PARTITION_IMPOSSIBLE }, // possible partitions are {{ s0, s1, s2, s5 }, { s3, s4 }} and {{ s0, s5 }, { s1, s2 }, { s3, s4 }}. both are not valid.
-                { "forallsafety/boundedunfolding/finiteWithBad.apt", SYS, AUTO_PARTITION },
-                { "forallsafety/boundedunfolding/firstTry.apt", SYS, AUTO_PARTITION },
-                { "forallsafety/boundedunfolding/secondTry.apt", SYS, AUTO_PARTITION },
-                { "forallsafety/boundedunfolding/thirdTry.apt", SYS, AUTO_PARTITION },
-//              { "forallsafety/boundedunfolding/txt.apt", UNKNOWN, AUTO_PARTITION }, // no system token in reachable marking
-//              { "forallsafety/boundedunfolding/txt2.apt", UNKNOWN, AUTO_PARTITION }, // no system token in reachable marking
-                { "forallsafety/constructedExample/constructedExample.apt", SYS, AUTO_PARTITION },
-                { "forallsafety/constructedExampleWithoutLoop/constructedExampleWithoutLoop.apt", SYS, AUTO_PARTITION },
-//              { "forallsafety/cornercases/unreachableEnvTransition.apt", UNKNOWN, AUTO_PARTITION }, // no system token in reachable marking
-                { "forallsafety/cornercases/unreachableEnvTransition2.apt", SYS, List.of(Set.of("S1", "S2"), Set.of("E0", "E2", "E3"), Set.of("E1", "E4")) },
-                { "forallsafety/deadlock/nondetDeadlock.apt", SYS, List.of(Set.of("s0", "s1", "s2"), Set.of("E", "r1", "EL", "r2")) },
-                { "forallsafety/deadlock/nondetDeadlock0.apt", SYS, PARTITION_TODO },
-                { "forallsafety/firstExamplePaper/firstExamplePaper.apt", SYS, AUTO_PARTITION },
-                { "forallsafety/firstExamplePaper/firstExamplePaper_extended.apt", ENV, AUTO_PARTITION },
-//              { "forallsafety/jhh/myexample0.apt", ENV, PARTITION_TODO }, // no system
-//              { "forallsafety/jhh/myexample00.apt", ENV, PARTITION_TODO }, // no system
-//              { "forallsafety/jhh/myexample000.apt", ENV, AUTO_PARTITION }, // no system token in reachable marking
-//              { "forallsafety/jhh/myexample2.apt", UNKNOWN, AUTO_PARTITION }, // no system token in reachable marking
-//              { "forallsafety/jhh/myexample3.apt", SYS, AUTO_PARTITION }, // no system token in reachable marking
-                { "forallsafety/jhh/myexample4.apt", ENV, AUTO_PARTITION },
-                { "forallsafety/jhh/myexample7.apt", PROBABLY_SYS, AUTO_PARTITION }, // to big to understand
-                { "forallsafety/jhh/robots_false.apt", PROBABLY_ENV, AUTO_PARTITION }, // to big to understand
-                { "forallsafety/jhh/robots_true.apt", PROBABLY_SYS, AUTO_PARTITION }, // to big to understand
-                { "forallsafety/ma_vsp/vsp_1.apt", SYS, AUTO_PARTITION }, // no bad places -> cannot loose
-                { "forallsafety/ma_vsp/vsp_1_withBadPlaces.apt", PROBABLY_SYS, AUTO_PARTITION },
-//              { "forallsafety/nm/independentNets.apt", SYS, AUTO_PARTITION }, // no system token in reachable marking
-//              { "forallsafety/nm/minimal.apt", ENV, AUTO_PARTITION }, // no system token in reachable marking
-//              { "forallsafety/nm/minimalNotFinishingEnv.apt", ENV, AUTO_PARTITION }, // no system token in reachable marking
-//              { "forallsafety/nm/minimalOnlySys.apt", ENV, PARTITION_TODO }, // no environment
-//              { "forallsafety/nm/trueconcurrent.apt", ENV, PARTITION_TODO }, // no system
-                { "forallsafety/noStrategy/lateSameDecision.apt", ENV, AUTO_PARTITION },
-                { "forallsafety/testingNets/envSkipsSys.apt", ENV, AUTO_PARTITION },
-                { "forallsafety/testingNets/infiniteSystemTrysToAvoidEnvUseBadPlace.apt", ENV, AUTO_PARTITION },
-                { "forallsafety/tests/testNotStartingMcut.apt", SYS, AUTO_PARTITION },
-                { "forallsafety/type2/separateEnvSys.apt", SYS, AUTO_PARTITION },
-                { "~/work/nets/accessor.apt", SYS, PARTITIONED_IN_FILE },
-                { "~/work/nets/chasing.apt", SYS, PARTITIONED_IN_FILE },
-                { "~/work/nets/decision.apt", PROBABLY_SYS, PARTITIONED_IN_FILE },
-                { "~/work/nets/different_choice.apt", ENV, PARTITIONED_IN_FILE }
+
+        };
+    }
+
+    @DataProvider
+    private static Object[][] concurrencyPreserving() {
+        return new Object[][] {
+                causalmemory,
+                txt,
+                txt2,
+                constructedExample,
+                constructedExampleWithoutLoop,
+                unreachableEnvTransition,
+                unreachableEnvTransition2,
+                nondetDeadlock,
+                firstExamplePaper,
+                firstExamplePaper_extended,
+                myexample0,
+                myexample00,
+                myexample000,
+                myexample4,
+                myexample7,
+                vsp_1,
+                vsp_1_withBadPlaces,
+                minimal,
+                minimalOnlySys,
+                trueconcurrent,
+                lateSameDecision,
+                envSkipsSys,
+                infiniteSystemTrysToAvoidEnvUseBadPlace,
+                separateEnvSys,
+                accessor,
+                chasing,
+                decision,
+                different_choice,
+        };
+    }
+
+    @DataProvider
+    private static Object[][] notConcurrencyPreserving() {
+        return new Object[][] {
+                paul,
+                finiteWithBad,
+                firstTry,
+                secondTry,
+                thirdTry,
+                nondetDeadlock0,
+                myexample2,
+                myexample3,
+                robots_false,
+                robots_true,
+                independentNets,
+                minimalNotFinishingEnv,
+                testNotStartingMcut,
+        };
+    }
+
+    @DataProvider
+    private static Object[][] netsWithTwoTeams() {
+        return new Object[][] {
+                paul,
+                causalmemory,
+                finiteWithBad,
+                firstTry,
+                secondTry,
+                thirdTry,
+                constructedExample,
+                constructedExampleWithoutLoop,
+                unreachableEnvTransition,
+                unreachableEnvTransition2,
+                nondetDeadlock,
+                nondetDeadlock0,
+                firstExamplePaper,
+                firstExamplePaper_extended,
+                myexample000,
+                myexample2,
+                myexample3,
+                myexample4,
+                myexample7,
+                robots_false,
+                robots_true,
+                vsp_1,
+                vsp_1_withBadPlaces,
+                independentNets,
+                minimal,
+                minimalNotFinishingEnv,
+                lateSameDecision,
+                envSkipsSys,
+                infiniteSystemTrysToAvoidEnvUseBadPlace,
+                testNotStartingMcut,
+                separateEnvSys,
+                accessor,
+                chasing,
+                decision,
+                different_choice,
+        };
+    }
+
+    @DataProvider
+    private static Object[][] netsWithoutTeams() {
+        return new Object[][] {
+                txt,
+                txt2,
+                myexample0,
+                myexample00,
+                minimalOnlySys,
+                trueconcurrent,
         };
     }
 
     @DataProvider
     private static Object[][] specific() {
         return new Object[][] {
-                { "~/work/nets/decision.apt", ENV, PARTITIONED_IN_FILE }
+                minimalNotFinishingEnv
         };
     }
 
@@ -128,7 +218,7 @@ public class TestingSomeExamples {
     private static final String inputDir = "/home/lukas/work/adam/github/synthesisDistrEnv/dependencies/examples/synthesis/";
     private static final String outputDir = "/home/lukas/tmp/work/";
 
-    @Test(dataProvider = "examples")
+    @Test(dataProvider = "netsWithTwoTeams")
     public static void existsWinningStrategyTest(String fileName, boolean existsWinningStrategy, List<Set<String>> partition) throws Exception {
         assertEquals(solver(fileName, partition).existsWinningStrategy(), existsWinningStrategy);
     }
@@ -137,7 +227,7 @@ public class TestingSomeExamples {
         PGTools.savePG2DotAndPDF(outputDir + fileName, solver(fileName, partition).getGame(), false, true).join();
     }
 
-    @Test(dataProvider = "examples")
+    @Test(dataProvider = "specific")
     public static void checkPartition(String fileName, boolean existsWinningStrategy, List<Set<String>> partition) throws Exception {
         PetriGameWithTransits game = game(fileName, partition);
         try {
@@ -152,25 +242,22 @@ public class TestingSomeExamples {
         }
     }
 
-    @Test(dataProvider = "examples")
-    public static void shouldCreateSolverTest(String fileName, boolean unused, List<Set<String>> partition) throws NotSupportedGameException, ParseException, CouldNotCalculateException, IOException {
-        isSingleEnv(fileName, unused, partition);
-        isConcurrencyPreserving(fileName, unused, partition);
-    }
-
-    @Test(dataProvider = "examples")
-    public static void isSingleEnv(String fileName, boolean unused, List<Set<String>> partition) throws NotSupportedGameException, ParseException, IOException, CouldNotCalculateException {
-        PGTools.checkAtMostOneSysToken(game(fileName, partition));
-    }
-
-    @Test(dataProvider = "examples")
+    @Test(dataProvider = "concurrencyPreserving")
     public static void isConcurrencyPreserving(String fileName, boolean unused, List<Set<String>> partition) throws NotSupportedGameException, CouldNotCalculateException, ParseException, IOException {
         Object value = game(fileName, partition).getValue(CalculatorIDs.CONCURRENCY_PRESERVING.name());
         assertEquals(value.getClass(), Boolean.class);
         assertTrue(((Boolean) value), fileName + " is not concurrency preserving.");
     }
 
-    @Test(dataProvider = "examples")
+    @Test(dataProvider = "netsWithTwoTeams")
+    public static void hasTwoTeams(String fileName, boolean unused, List<Set<String>> partition) throws NotSupportedGameException, CouldNotCalculateException, ParseException, IOException {
+        PetriGameWithTransits game = game(fileName, partition);
+        boolean hasSys = game.getPlaces().stream().anyMatch(game::isSystem);
+        boolean hasEnv = game.getPlaces().stream().anyMatch(game::isEnvironment);
+        assertTrue(hasEnv && hasSys, fileName + " doesn't have two teams, it's not a game");
+    }
+
+    @Test(dataProvider = "netsWithTwoTeams")
     public static void canCreateSolverTest(String fileName, boolean unused, List<Set<String>> partition) throws IOException, ParseException {
         try {
             solver(fileName, partition);
@@ -181,7 +268,7 @@ public class TestingSomeExamples {
         }
     }
 
-    @Test(dataProvider = "specific")
+    @Test(dataProvider = "netsWithTwoTeams")
     public static void renderGraph(String fileName, boolean existsWinningStrategy, List<Set<String>> partition) throws Exception {
         PetriGameWithTransits game = game(fileName, partition);
         DistrEnvBDDGlobalSafetySolver solver = (DistrEnvBDDGlobalSafetySolver) DistrEnvBDDSolverFactory.getInstance()
@@ -192,14 +279,14 @@ public class TestingSomeExamples {
         Thread.sleep(1000);
     }
 
-    @Test(dataProvider = "specific")
+    @Test(dataProvider = "netsWithTwoTeams")
     public static void renderGraphStrategy(String fileName, boolean existsWinningStrategy, List<Set<String>> partition) throws Exception {
         PetriGameWithTransits game = game(fileName, partition);
         DistrEnvBDDGlobalSafetySolver solver = (DistrEnvBDDGlobalSafetySolver) DistrEnvBDDSolverFactory.getInstance()
                 .getSolver(game, new DistrEnvBDDSolverOptions(false, false));
         solver.initialize();
         BDDGraph bddGraph = BDDGraphAndGStrategyBuilder.getInstance().builtGraphStrategy(solver, null);
-        BDDTools.saveGraph2PDF(outputDir + justFileName(fileName), bddGraph, solver);
+        BDDTools.saveGraph2PDF(outputDir + justFileName(fileName) + "_strategy", bddGraph, solver);
         Thread.sleep(1000);
     }
 
