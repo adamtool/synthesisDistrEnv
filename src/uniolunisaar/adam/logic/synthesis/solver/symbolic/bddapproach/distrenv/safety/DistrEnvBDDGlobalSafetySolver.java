@@ -161,8 +161,11 @@ public class DistrEnvBDDGlobalSafetySolver extends DistrEnvBDDSolver<GlobalSafet
 
     protected BDD graphGame_initialVertex(int pos) {
         return codeMarking(this.getGame().getInitialMarking(), pos, true)
-                /* the system must choose it's initial commitment set. */
-                .andWith(top(pos))
+                /*
+                 * the system must choose it's initial commitment set,
+                 * only if there is an initial system player.
+                 */
+                .andWith(top(pos).biimpWith(systemTokenExists(pos)))
                 .andWith(nothingChosen(pos));
     }
 
@@ -223,9 +226,20 @@ public class DistrEnvBDDGlobalSafetySolver extends DistrEnvBDDSolver<GlobalSafet
         if (this.getSolvingObject().getSystemTransitions().contains(transition)) {
             throw new IllegalArgumentException(transition + " is a system transition");
         }
+
+        boolean hasNoSystemInPreset = transition.getPreset().stream()
+                .noneMatch(place -> this.getGame().isSystem(place));
+        boolean hasSystemInPostset = transition.getPostset().stream()
+                .anyMatch(place -> this.getGame().isSystem(place));
+
         BDD ret = getOne();
-        ret.andWith(notTop(PREDECESSOR)).andWith(notTop(SUCCESSOR));
-        ret.andWith(commitmentsEqual());
+        if (hasNoSystemInPreset && hasSystemInPostset) {
+            ret.andWith(notTop(PREDECESSOR)).andWith(top(SUCCESSOR));
+            ret.andWith(nothingChosen(SUCCESSOR));
+        } else {
+            ret.andWith(notTop(PREDECESSOR)).andWith(notTop(SUCCESSOR));
+            ret.andWith(commitmentsEqual());
+        }
         ret.andWith(fire(transition));
         return ret;
     }
@@ -472,6 +486,14 @@ public class DistrEnvBDDGlobalSafetySolver extends DistrEnvBDDSolver<GlobalSafet
                 .collect(and());
     }
 
+    protected BDD systemTokenExists(int pos) {
+        if (this.getSolvingObject().isConcurrencyPreserving()) {
+            return getOne();
+        } else {
+            return notUsedToken(pos, PARTITION_OF_SYSTEM_PLAYER).not().and(onlyExistingPlacesInMarking(pos));
+        }
+    }
+
     protected BDD markingEqual(int partition) {
         return PLACES[PREDECESSOR][partition].buildEquals(PLACES[SUCCESSOR][partition]);
     }
@@ -529,13 +551,7 @@ public class DistrEnvBDDGlobalSafetySolver extends DistrEnvBDDSolver<GlobalSafet
          * only transitions in the postset of the system player may be in the commitment.
          * in top states there is no commitment set, thus there are no constraints on it.
          */
-        /* TODO
-         *  If the system is in a state without a system token,
-         *  we don't know which system transitions could be enabled in the future.
-         *  Not constraining probably increases the state space,
-         *  but should not result in mistakes.
-         */
-        //ret.andWith(notTop(pos).impWith(onlyChooseTransitionsInPostsetOfSystemPlace(pos)));
+        ret.andWith(notTop(pos).impWith(onlyChooseTransitionsInPostsetOfSystemPlace(pos)));
 
         return ret;
     }
