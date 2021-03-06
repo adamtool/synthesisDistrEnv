@@ -199,16 +199,6 @@ public class DistrEnvBDDGlobalSafetySolver extends DistrEnvBDDSolver<GlobalSafet
         ret.andWith(onlySystemTransitionsEnabled(SUCCESSOR).impWith(onlyChooseEnabledTransitions(SUCCESSOR)));
 
         /*
-         * OPTIONAL
-         * if the net is not in deadlock,
-         * player 0 must not refuse all transitions.
-         * if there is no system player, there is no commitment set either.
-         * but because no commitment set is encoded as the empty set,
-         * nothing has to be chosen when no system token exists.
-         */
-        ret.andWith(someTransitionEnabled(SUCCESSOR).andWith(systemTokenExists(SUCCESSOR)).impWith(somethingChosen(SUCCESSOR)));
-
-        /*
          * we don't specify the chosen commitment set,
          * but let the bdd solver find all suitable commitment sets.
          */

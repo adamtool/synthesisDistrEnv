@@ -84,6 +84,7 @@ public class TestingSomeExamples {
     private final static Object[] decision = { "~/work/nets/paper/decision.apt", PROBABLY_SYS, PARTITIONED_IN_FILE };
     private final static Object[] different_choice = { "~/work/nets/different_choice.apt", ENV, PARTITIONED_IN_FILE };
     private final static Object[] sysChooseNoSysEnabled = { "~/work/nets/sysChooseNoSysEnabled.apt", SYS, PARTITIONED_IN_FILE };
+    private final static Object[] systemCanWaitForever = { "~/work/nets/systemCanWaitForever.apt", SYS, AUTO_PARTITION };
 
     @DataProvider
     private static Object[][] concurrencyPreservingGames() {
@@ -106,6 +107,7 @@ public class TestingSomeExamples {
                 chasing,
                 decision,
                 different_choice,
+                systemCanWaitForever,
         };
     }
 
@@ -171,7 +173,8 @@ public class TestingSomeExamples {
                 chasing,
                 decision,
                 different_choice,
-                sysChooseNoSysEnabled
+                sysChooseNoSysEnabled,
+                systemCanWaitForever,
         };
     }
 
