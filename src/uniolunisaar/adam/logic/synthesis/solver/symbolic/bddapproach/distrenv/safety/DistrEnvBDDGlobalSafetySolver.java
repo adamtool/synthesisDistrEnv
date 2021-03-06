@@ -190,6 +190,15 @@ public class DistrEnvBDDGlobalSafetySolver extends DistrEnvBDDSolver<GlobalSafet
         ret.andWith(onlyChooseTransitionsInPostsetOfSystemPlace(SUCCESSOR));
 
         /*
+         * OPTIONAL
+         * if no purely environmental transition is enabled,
+         * but some system transitions are,
+         * the system must only choose currently enabled transitions,
+         * because no other marking can be reached before a system transition fires.
+         */
+        ret.andWith(onlySystemTransitionsEnabled(SUCCESSOR).impWith(onlyChooseEnabledTransitions(SUCCESSOR)));
+
+        /*
          * we don't specify the chosen commitment set,
          * but let the bdd solver find all suitable commitment sets.
          */
@@ -318,16 +327,10 @@ public class DistrEnvBDDGlobalSafetySolver extends DistrEnvBDDSolver<GlobalSafet
      * In the paper these are the vertices of type X3.
      */
     private BDD graphGame_deadlock(int pos) {
-        BDD noEnvironmentEnabled = this.getSolvingObject().getPurelyEnvironmentalTransitions().stream()
-                .map(transition -> this.enabled(transition, pos).not())
-                .collect(and());
-        BDD someSystemEnabled = this.getSolvingObject().getSystemTransitions().stream()
-                .map(transition -> this.enabled(transition, pos))
-                .collect(or());
         BDD noSystemChosen = this.getSolvingObject().getSystemTransitions().stream()
                 .map(transition -> this.enabled(transition, pos).andWith(this.chosen(transition, pos)).not())
                 .collect(and());
-        return notTop(pos).andWith(noEnvironmentEnabled).andWith(someSystemEnabled).andWith(noSystemChosen);
+        return notTop(pos).andWith(onlySystemTransitionsEnabled(pos)).andWith(noSystemChosen);
     }
 
     protected BDD graphGame_player1Edges() {
@@ -462,6 +465,28 @@ public class DistrEnvBDDGlobalSafetySolver extends DistrEnvBDDSolver<GlobalSafet
             ret.andWith(notUsedToken(pos, PARTITION_OF_SYSTEM_PLAYER).impWith(nothingChosen(pos)));
         }
         return ret;
+    }
+
+    protected BDD someSystemTransitionEnabled(int pos) {
+        return this.getSolvingObject().getSystemTransitions().stream()
+                .map(transition -> this.enabled(transition, pos))
+                .collect(or());
+    }
+
+    protected BDD noPurelyEnvironmentalTransitionEnabled(int pos) {
+        return this.getSolvingObject().getPurelyEnvironmentalTransitions().stream()
+                .map(transition -> this.enabled(transition, pos).not())
+                .collect(and());
+    }
+
+    protected BDD onlySystemTransitionsEnabled(int pos) {
+        return noPurelyEnvironmentalTransitionEnabled(pos).andWith(someSystemTransitionEnabled(pos));
+    }
+
+    protected BDD onlyChooseEnabledTransitions(int pos) {
+        return this.getSolvingObject().getSystemTransitions().stream()
+                .map(transition -> enabled(transition, pos).not().impWith(codeSystemTransition(transition, pos).not()))
+                .collect(and());
     }
 
     protected BDD onlyExistingPlacesInMarking(int pos) {
