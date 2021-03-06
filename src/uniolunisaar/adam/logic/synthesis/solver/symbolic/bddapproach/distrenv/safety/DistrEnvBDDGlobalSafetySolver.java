@@ -199,6 +199,16 @@ public class DistrEnvBDDGlobalSafetySolver extends DistrEnvBDDSolver<GlobalSafet
         ret.andWith(onlySystemTransitionsEnabled(SUCCESSOR).impWith(onlyChooseEnabledTransitions(SUCCESSOR)));
 
         /*
+         * OPTIONAL
+         * if the net is not in deadlock,
+         * player 0 must not refuse all transitions.
+         * if there is no system player, there is no commitment set either.
+         * but because no commitment set is encoded as the empty set,
+         * nothing has to be chosen when no system token exists.
+         */
+        ret.andWith(someTransitionEnabled(SUCCESSOR).andWith(systemTokenExists(SUCCESSOR)).impWith(somethingChosen(SUCCESSOR)));
+
+        /*
          * we don't specify the chosen commitment set,
          * but let the bdd solver find all suitable commitment sets.
          */
@@ -473,6 +483,18 @@ public class DistrEnvBDDGlobalSafetySolver extends DistrEnvBDDSolver<GlobalSafet
                 .collect(or());
     }
 
+    protected BDD noSystemTransitionEnabled(int pos) {
+        return this.getSolvingObject().getSystemTransitions().stream()
+                .map(transition -> this.enabled(transition, pos).not())
+                .collect(and());
+    }
+
+    protected BDD somePurelyEnvironmentalTransitionEnabled(int pos) {
+        return this.getSolvingObject().getPurelyEnvironmentalTransitions().stream()
+                .map(transition -> this.enabled(transition, pos))
+                .collect(or());
+    }
+
     protected BDD noPurelyEnvironmentalTransitionEnabled(int pos) {
         return this.getSolvingObject().getPurelyEnvironmentalTransitions().stream()
                 .map(transition -> this.enabled(transition, pos).not())
@@ -481,6 +503,10 @@ public class DistrEnvBDDGlobalSafetySolver extends DistrEnvBDDSolver<GlobalSafet
 
     protected BDD onlySystemTransitionsEnabled(int pos) {
         return noPurelyEnvironmentalTransitionEnabled(pos).andWith(someSystemTransitionEnabled(pos));
+    }
+
+    protected BDD someTransitionEnabled(int pos) {
+        return someSystemTransitionEnabled(pos).orWith(somePurelyEnvironmentalTransitionEnabled(pos));
     }
 
     protected BDD onlyChooseEnabledTransitions(int pos) {
@@ -531,6 +557,12 @@ public class DistrEnvBDDGlobalSafetySolver extends DistrEnvBDDSolver<GlobalSafet
 
     protected BDD nothingChosen(int pos) {
         return TRANSITIONS[pos].ithVar(0);
+    }
+
+    protected BDD somethingChosen(int pos) {
+        return this.getSolvingObject().getSystemTransitions().stream()
+                .map(transition -> codeSystemTransition(transition, pos))
+                .collect(or());
     }
 
     protected BDD transmitPoison(BDD poisoned, BDD allEdges, BDD existsEdges) {
