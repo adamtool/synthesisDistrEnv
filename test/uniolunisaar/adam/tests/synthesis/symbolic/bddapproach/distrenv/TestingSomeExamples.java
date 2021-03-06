@@ -19,6 +19,7 @@ import uniolunisaar.adam.ds.synthesis.solver.symbolic.bddapproach.distrenv.Distr
 import uniolunisaar.adam.exceptions.synthesis.pgwt.CouldNotCalculateException;
 import uniolunisaar.adam.exceptions.synthesis.pgwt.CouldNotFindSuitableConditionException;
 import uniolunisaar.adam.exceptions.synthesis.pgwt.InvalidPartitionException;
+import uniolunisaar.adam.exceptions.synthesis.pgwt.NoStrategyExistentException;
 import uniolunisaar.adam.exceptions.synthesis.pgwt.NoSuitableDistributionFoundException;
 import uniolunisaar.adam.exceptions.synthesis.pgwt.NotSupportedGameException;
 import uniolunisaar.adam.exceptions.synthesis.pgwt.SolvingException;
@@ -177,7 +178,7 @@ public class TestingSomeExamples {
     @DataProvider
     private static Object[][] specific() {
         return new Object[][] {
-                minimalNotFinishingEnv
+                sysChooseNoSysEnabled
         };
     }
 
@@ -246,7 +247,7 @@ public class TestingSomeExamples {
         solver.initialize();
         BDDGraph bddGraph = BDDGraphAndGStrategyBuilder.getInstance().builtGraph(solver);
         BDDTools.saveGraph2PDF(outputDir + justFileName(fileName), bddGraph, solver);
-        Thread.sleep(1000);
+        Thread.sleep(100);
     }
 
     @Test(dataProvider = "specific")
@@ -255,9 +256,25 @@ public class TestingSomeExamples {
         DistrEnvBDDGlobalSafetySolver solver = (DistrEnvBDDGlobalSafetySolver) DistrEnvBDDSolverFactory.getInstance()
                 .getSolver(game, new DistrEnvBDDSolverOptions(false, false));
         solver.initialize();
-        BDDGraph bddGraph = BDDGraphAndGStrategyBuilder.getInstance().builtGraphStrategy(solver, null);
-        BDDTools.saveGraph2PDF(outputDir + justFileName(fileName) + "_strategy", bddGraph, solver);
-        Thread.sleep(1000);
+        try {
+            BDDGraph bddGraph = BDDGraphAndGStrategyBuilder.getInstance().builtGraphStrategy(solver, null);
+            BDDTools.saveGraph2PDF(outputDir + justFileName(fileName) + "_strategy", bddGraph, solver);
+            Thread.sleep(100);
+        } catch (NoStrategyExistentException e) {
+            if (existsWinningStrategy) {
+                fail();
+            }
+            return;
+        }
+        if (!existsWinningStrategy) {
+            fail();
+        }
+    }
+
+    @Test(dataProvider = "specific")
+    public static void renderGraphGameAndStrategy(String fileName, boolean existsWinningStrategy, List<Set<String>> partition) throws Exception {
+        renderGraph(fileName, existsWinningStrategy, partition);
+        renderGraphStrategy(fileName, existsWinningStrategy, partition);
     }
 
     private static DistrEnvBDDSolver<? extends Condition<?>> solver(String fileName, List<Set<String>> partition) throws SolvingException, CouldNotFindSuitableConditionException, IOException, ParseException {

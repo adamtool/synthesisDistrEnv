@@ -455,16 +455,30 @@ public class DistrEnvBDDGlobalSafetySolver extends DistrEnvBDDSolver<GlobalSafet
     }
 
     protected BDD onlyChooseTransitionsInPostsetOfSystemPlace(int pos) {
-        return this.getSolvingObject().getSystemPlaces().stream()
+        BDD ret = this.getSolvingObject().getSystemPlaces().stream()
                 .map(place -> onlyChooseTransitionsInPostsetOfSystemPlace(place, pos))
                 .collect(and());
+        if (!this.getSolvingObject().isConcurrencyPreserving()) {
+            ret.andWith(notUsedToken(pos, PARTITION_OF_SYSTEM_PLAYER).impWith(nothingChosen(pos)));
+        }
+        return ret;
     }
 
     protected BDD onlyExistingPlacesInMarking(int pos) {
         return this.streamPartitions()
                 .mapToObj(partition -> this.getSolvingObject().getDevidedPlaces()[partition].stream()
-                        .map(place -> codePlace(place, pos, partition).orWith(notUsedToken(pos, partition)))
-                        .collect(or()))
+                        .map(place -> codePlace(place, pos, partition))
+                        .collect(or())
+                        .orWith(notUsedToken(pos, partition)))
+                /*
+                 * notUsedToken(pos, partition) is equal to codePlace(0, pos, partition).
+                 * This could be problematic, because in the not concurrency preserving case
+                 * the place id 0 does refer to an actual place.
+                 * But in the big or statement the place with id 0 is already encoded,
+                 * because there cannot be a partition without any places.
+                 * Thus on the concurrency preserving case
+                 * or-ing with notUsedToken(pos, partition) does nothing.
+                 */
                 .collect(and());
     }
 
@@ -566,6 +580,7 @@ public class DistrEnvBDDGlobalSafetySolver extends DistrEnvBDDSolver<GlobalSafet
                     if (place.isPresent()) {
                         return codePlace(place.get(), pos, partition);
                     } else if (encodeMissingToken) {
+                        assert !this.getSolvingObject().isConcurrencyPreserving();
                         return notUsedToken(pos, partition);
                     } else {
                         return getOne();
@@ -758,7 +773,7 @@ public class DistrEnvBDDGlobalSafetySolver extends DistrEnvBDDSolver<GlobalSafet
 
     private static String commitmentToConciseString(Map<Integer, List<Transition>> commitment, Place systemPlace) {
         Function<List<Transition>, String> stringify = list -> "{" + list.stream()
-                .filter(transition -> systemPlace.getPostset().contains(transition))
+                .filter(transition -> Optional.ofNullable(systemPlace).map(Place::getPostset).orElseGet(Collections::emptySet).contains(transition))
                 .map(Transition::getId)
                 .collect(Collectors.joining(", ")) + "}";
         StringJoiner sj = new StringJoiner(" ");
@@ -784,9 +799,9 @@ public class DistrEnvBDDGlobalSafetySolver extends DistrEnvBDDSolver<GlobalSafet
             switch (top) {
                 case TRUE -> ret.insert(0, "T ");
                 case FALSE -> ret.append("\n").append(
-                        systemPlayer.equals("?") || systemPlayer.equals("-")
+                        systemPlayer.equals("?")
                                 ? commitmentToVerboseString(decodeCommitment(dcs, pos))
-                                : commitmentToConciseString(decodeCommitment(dcs, pos), getGame().getPlace(systemPlayer)));
+                                : commitmentToConciseString(decodeCommitment(dcs, pos), systemPlayer.equals("-") ? null : getGame().getPlace(systemPlayer)));
                 case UNKNOWN -> ret.append("\nT:? ").append(commitmentToVerboseString(decodeCommitment(dcs, pos)));
             }
         } else { // verbose
