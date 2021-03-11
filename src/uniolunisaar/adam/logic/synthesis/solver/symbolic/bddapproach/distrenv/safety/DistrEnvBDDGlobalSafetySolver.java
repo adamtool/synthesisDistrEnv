@@ -81,6 +81,8 @@ public class DistrEnvBDDGlobalSafetySolver extends DistrEnvBDDSolver<GlobalSafet
     protected BDDDomain[] TRANSITIONS;
     /* [pos] */
     protected BDDDomain[] TOP;
+    /* [pos] */
+    protected BDDDomain[] RESPONSIBILITY;
 
     /**
      * Stream collector for or-ing a stream of BDDs.
@@ -90,6 +92,17 @@ public class DistrEnvBDDGlobalSafetySolver extends DistrEnvBDDSolver<GlobalSafet
                 this::getZero,
                 BDD::orWith,
                 BDD::orWith
+        );
+    }
+
+    /**
+     * Stream collector for or-ing a stream of BDDs.
+     */
+    private Collector<BDD, BDD, BDD> xor() {
+        return Collector.of(
+                this::getZero,
+                BDD::xorWith,
+                BDD::xorWith
         );
     }
 
@@ -116,6 +129,7 @@ public class DistrEnvBDDGlobalSafetySolver extends DistrEnvBDDSolver<GlobalSafet
         PLACES = new BDDDomain[2][numberOfPartitions];
         TRANSITIONS = new BDDDomain[2];
         TOP = new BDDDomain[2];
+        RESPONSIBILITY = new BDDDomain[2];
         for (int pos : List.of(PREDECESSOR, SUCCESSOR)) {
             for (int partition = 0; partition < numberOfPartitions; partition++) {
                 PLACES[pos][partition] = this.getFactory().extDomain(
@@ -125,6 +139,7 @@ public class DistrEnvBDDGlobalSafetySolver extends DistrEnvBDDSolver<GlobalSafet
                 /* for every system transition the system player must choose whether or not to allow that transition. */
                 TRANSITIONS[pos] = this.getFactory().extDomain(BigInteger.TWO.pow(this.getSolvingObject().getSystemTransitions().size()));
                 TOP[pos] = this.getFactory().extDomain(2);
+                RESPONSIBILITY[pos] = this.getFactory().extDomain(BigInteger.TWO.pow(numberOfPartitions));
             }
         }
         setDCSLength(getFactory().varNum() / 2); // TODO what is this?
@@ -134,6 +149,7 @@ public class DistrEnvBDDGlobalSafetySolver extends DistrEnvBDDSolver<GlobalSafet
     protected BDD getVariables(int pos) {
         return TOP[pos].set()
                 .and(TRANSITIONS[pos].set())
+                .and(RESPONSIBILITY[pos].set())
                 .and(Arrays.stream(PLACES[pos])
                         .map(BDDDomain::set)
                         .collect(and()));
@@ -143,6 +159,7 @@ public class DistrEnvBDDGlobalSafetySolver extends DistrEnvBDDSolver<GlobalSafet
     protected BDD preBimpSucc() {
         return TOP[PREDECESSOR].buildEquals(TOP[SUCCESSOR])
                 .and(TRANSITIONS[PREDECESSOR].buildEquals(TRANSITIONS[SUCCESSOR]))
+                .and(RESPONSIBILITY[PREDECESSOR].buildEquals(RESPONSIBILITY[SUCCESSOR]))
                 .and(this.streamPartitions()
                         .mapToObj(partition -> PLACES[PREDECESSOR][partition].buildEquals(PLACES[SUCCESSOR][partition]))
                         .collect(and()));
@@ -155,8 +172,16 @@ public class DistrEnvBDDGlobalSafetySolver extends DistrEnvBDDSolver<GlobalSafet
         return this.getFactory().ithVar(TRANSITIONS[pos].vars()[transitionIndex]);
     }
 
+    protected BDD codeResponsibility(int partition, int pos) {
+        return this.getFactory().ithVar(RESPONSIBILITY[pos].vars()[partition]);
+    }
+
     protected IntStream streamPartitions() {
-        return IntStream.range(0, this.getSolvingObject().getMaxTokenCountInt());
+        return streamPartitions(true);
+    }
+
+    protected IntStream streamPartitions(boolean includeSystem) {
+        return IntStream.range(includeSystem ? 0 : 1, this.getSolvingObject().getMaxTokenCountInt());
     }
 
     protected BDD graphGame_initialVertex(int pos) {
@@ -165,8 +190,9 @@ public class DistrEnvBDDGlobalSafetySolver extends DistrEnvBDDSolver<GlobalSafet
                  * the system must choose it's initial commitment set,
                  * only if there is an initial system player.
                  */
-                .andWith(top(pos).biimpWith(systemTokenExists(pos)))
-                .andWith(nothingChosen(pos));
+                .andWith(top(pos).biimpWith(tokenExists(PARTITION_OF_SYSTEM_PLAYER, pos)))
+                .andWith(nothingChosen(pos))
+                .andWith(onlySystemInResponsibilitySet(PREDECESSOR));
     }
 
     /**
@@ -188,6 +214,8 @@ public class DistrEnvBDDGlobalSafetySolver extends DistrEnvBDDSolver<GlobalSafet
          * only transitions in the postset of the current system place can be chosen.
          */
         ret.andWith(onlyChooseTransitionsInPostsetOfSystemPlace(SUCCESSOR));
+
+        ret.andWith(onlySystemInResponsibilitySet(PREDECESSOR).andWith(onlySystemInResponsibilitySet(SUCCESSOR)));
 
         /*
          * OPTIONAL
@@ -224,19 +252,42 @@ public class DistrEnvBDDGlobalSafetySolver extends DistrEnvBDDSolver<GlobalSafet
             throw new IllegalArgumentException(transition + " is a system transition");
         }
 
-        boolean hasNoSystemInPreset = transition.getPreset().stream()
-                .noneMatch(place -> this.getGame().isSystem(place));
-        boolean hasSystemInPostset = transition.getPostset().stream()
+        boolean createsNewSystemToken = transition.getPostset().stream()
                 .anyMatch(place -> this.getGame().isSystem(place));
 
         BDD ret = getOne();
-        if (hasNoSystemInPreset && hasSystemInPostset) {
+        if (createsNewSystemToken) {
             ret.andWith(notTop(PREDECESSOR)).andWith(top(SUCCESSOR));
             ret.andWith(nothingChosen(SUCCESSOR));
         } else {
             ret.andWith(notTop(PREDECESSOR)).andWith(notTop(SUCCESSOR));
             ret.andWith(commitmentsEqual());
         }
+
+        BDD add, remove = transition.getPreset().stream()
+                .map(this.getGame()::getPartition)
+                .map(partition -> codeResponsibility(partition, SUCCESSOR))
+                .collect(and());
+        if (createsNewSystemToken) {
+            /*
+             * if this transition creates a new system token,
+             * choose that as the new entry to the responsibility set.
+             * otherwise there is no way for the system token to add the system in the future,
+             * meaning that no system transition can ever fire.
+             */
+            add = codeResponsibility(PARTITION_OF_SYSTEM_PLAYER, SUCCESSOR);
+        } else {
+            /*
+             * if no system token is created, choose a random token.
+             */
+            add = transition.getPostset().stream()
+                    .map(this.getGame()::getPartition)
+                    .map(partition -> codeResponsibility(partition, SUCCESSOR))
+                    .collect(xor());
+        }
+        ret.andWith(responsibilitiesEqual().exist(remove).andWith(remove.not()).exist(add).andWith(add));
+        ret.andWith(responsibilitySubsetMarking(SUCCESSOR));
+
         ret.andWith(fire(transition));
         return ret;
     }
@@ -261,6 +312,20 @@ public class DistrEnvBDDGlobalSafetySolver extends DistrEnvBDDSolver<GlobalSafet
          */
         ret.andWith(nothingChosen(SUCCESSOR));
         ret.andWith(fire(transition));
+
+        BDD environmentOnlyTakesSystemTransitionsEnabledByResponsibilitySet = transition.getPreset().stream()
+                .map(place -> codeResponsibility(this.getGame().getPartition(place), PREDECESSOR))
+                .collect(and());
+        /*
+         * TODO in the paper this is without the implication. the implied should always hold.
+         *  But that causes a environment induced deadlock
+         *  when the only enabled transitions are system transitions,
+         *  but they are not enabled by the responsibility set.
+         *  This situation occurs, if initially only system transitions are enabled.
+         */
+        ret.andWith(somePurelyEnvironmentalTransitionEnabled(PREDECESSOR).impWith(environmentOnlyTakesSystemTransitionsEnabledByResponsibilitySet));
+        ret.andWith(onlySystemInResponsibilitySet(SUCCESSOR));
+
         return ret;
     }
 
@@ -523,11 +588,11 @@ public class DistrEnvBDDGlobalSafetySolver extends DistrEnvBDDSolver<GlobalSafet
                 .collect(and());
     }
 
-    protected BDD systemTokenExists(int pos) {
+    protected BDD tokenExists(int partition, int pos) {
         if (this.getSolvingObject().isConcurrencyPreserving()) {
             return getOne();
         } else {
-            return notUsedToken(pos, PARTITION_OF_SYSTEM_PLAYER).not().and(onlyExistingPlacesInMarking(pos));
+            return notUsedToken(pos, partition).not().and(onlyExistingPlacesInMarking(pos));
         }
     }
 
@@ -553,6 +618,27 @@ public class DistrEnvBDDGlobalSafetySolver extends DistrEnvBDDSolver<GlobalSafet
         return this.getSolvingObject().getSystemTransitions().stream()
                 .map(transition -> codeSystemTransition(transition, pos))
                 .collect(or());
+    }
+
+    protected BDD responsibilitiesEqual() {
+        return RESPONSIBILITY[PREDECESSOR].buildEquals(RESPONSIBILITY[SUCCESSOR]);
+    }
+
+    protected BDD onlySystemInResponsibilitySet(int pos) {
+        return codeResponsibility(PARTITION_OF_SYSTEM_PLAYER, pos).biimpWith(tokenExists(PARTITION_OF_SYSTEM_PLAYER, pos))
+                .andWith(this.streamPartitions(false)
+                        .mapToObj(partition -> codeResponsibility(partition, pos).not())
+                        .collect(and()));
+    }
+
+    protected BDD responsibilityContainsSystem(int pos) {
+        return codeResponsibility(PARTITION_OF_SYSTEM_PLAYER, pos).biimpWith(tokenExists(PARTITION_OF_SYSTEM_PLAYER, pos));
+    }
+
+    protected BDD responsibilitySubsetMarking(int pos) {
+        return this.streamPartitions()
+                .mapToObj(partition -> codeResponsibility(partition, pos).impWith(tokenExists(partition, pos)))
+                .collect(and());
     }
 
     protected BDD transmitPoison(BDD poisoned, BDD allEdges, BDD existsEdges) {
@@ -595,6 +681,7 @@ public class DistrEnvBDDGlobalSafetySolver extends DistrEnvBDDSolver<GlobalSafet
          * in top states there is no commitment set, thus there are no constraints on it.
          */
         ret.andWith(notTop(pos).impWith(onlyChooseTransitionsInPostsetOfSystemPlace(pos)));
+        ret.andWith(responsibilitySubsetMarking(pos)).andWith(responsibilityContainsSystem(pos));
 
         return ret;
     }
@@ -833,16 +920,38 @@ public class DistrEnvBDDGlobalSafetySolver extends DistrEnvBDDSolver<GlobalSafet
         return sj.toString();
     }
 
+    private Map<Integer, Byte> decodeResponsibility(byte[] dcs, int pos) {
+        return this.streamPartitions()
+                .boxed()
+                .collect(Collectors.toMap(Function.identity(), partition -> dcs[RESPONSIBILITY[pos].vars()[partition]]));
+    }
+
     protected String decodeVertex(byte[] dcs, int pos) {
+        boolean verbose = false;
+        Map<Integer, Byte> responsibility = decodeResponsibility(dcs, pos);
         String systemPlayer = decodePlayer(dcs, pos, PARTITION_OF_SYSTEM_PLAYER);
+        assert responsibility.get(PARTITION_OF_SYSTEM_PLAYER) == 1 ^ systemPlayer.equals("-") : "System player " + systemPlayer + " is not in responsibility set " + responsibility;
         String stringifiedEnvPlayerPlaces = IntStream.range(1, this.getSolvingObject().getMaxTokenCountInt())
-                .mapToObj(partition -> decodePlayer(dcs, pos, partition))
+                .mapToObj(partition -> {
+                    StringBuilder sb = new StringBuilder();
+                    String player = decodePlayer(dcs, pos, partition);
+                    sb.append(player);
+                    if (verbose || !player.equals("-")) {
+                        sb.append(":").append(responsibility.get(partition));
+                    }
+                    return sb.toString();
+                })
                 .collect(Collectors.joining(", "));
         StringBuilder ret = new StringBuilder();
         ret.append("(s: ").append(systemPlayer);
+        if (verbose) {
+            ret.append(":").append(responsibility.get(PARTITION_OF_SYSTEM_PLAYER));
+        }
         ret.append(" | e: ").append(stringifiedEnvPlayerPlaces).append(")");
         byte top = dcs[TOP[pos].vars()[0]];
-        if (true) { // normal
+        if (verbose) {
+            ret.append("\nT:").append(top).append(" ").append(commitmentToVerboseString(decodeCommitment(dcs, pos)));
+        } else {
             switch (top) {
                 case TRUE -> ret.insert(0, "T ");
                 case FALSE -> ret.append("\n").append(
@@ -851,8 +960,6 @@ public class DistrEnvBDDGlobalSafetySolver extends DistrEnvBDDSolver<GlobalSafet
                                 : commitmentToConciseString(decodeCommitment(dcs, pos), systemPlayer.equals("-") ? null : getGame().getPlace(systemPlayer)));
                 case UNKNOWN -> ret.append("\nT:? ").append(commitmentToVerboseString(decodeCommitment(dcs, pos)));
             }
-        } else { // verbose
-            ret.append("\nT:").append(top).append(" ").append(commitmentToVerboseString(decodeCommitment(dcs, pos)));
         }
         return ret.toString();
     }
