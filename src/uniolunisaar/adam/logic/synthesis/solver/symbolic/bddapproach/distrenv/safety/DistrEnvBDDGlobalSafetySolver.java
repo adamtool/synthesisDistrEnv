@@ -313,17 +313,14 @@ public class DistrEnvBDDGlobalSafetySolver extends DistrEnvBDDSolver<GlobalSafet
         ret.andWith(nothingChosen(SUCCESSOR));
         ret.andWith(fire(transition));
 
-        BDD environmentOnlyTakesSystemTransitionsEnabledByResponsibilitySet = transition.getPreset().stream()
-                .map(place -> codeResponsibility(this.getGame().getPartition(place), PREDECESSOR))
+        Set<Integer> prePartitions = transition.getPreset().stream()
+                .map(this.getGame()::getPartition)
+                .collect(Collectors.toSet());
+        BDD responsibilitySubsetPreset = this.streamPartitions(false)
+                .filter(partition -> !prePartitions.contains(partition))
+                .mapToObj(partition -> codeResponsibility(partition, PREDECESSOR).not())
                 .collect(and());
-        /*
-         * TODO in the paper this is without the implication. the implied should always hold.
-         *  But that causes a environment induced deadlock
-         *  when the only enabled transitions are system transitions,
-         *  but they are not enabled by the responsibility set.
-         *  This situation occurs, if initially only system transitions are enabled.
-         */
-        ret.andWith(somePurelyEnvironmentalTransitionEnabled(PREDECESSOR).impWith(environmentOnlyTakesSystemTransitionsEnabledByResponsibilitySet));
+        ret.andWith(responsibilitySubsetPreset);
         ret.andWith(onlySystemInResponsibilitySet(SUCCESSOR));
 
         return ret;
