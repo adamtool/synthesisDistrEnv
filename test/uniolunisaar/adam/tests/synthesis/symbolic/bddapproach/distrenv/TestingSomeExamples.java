@@ -4,15 +4,26 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashSet;
+import java.util.LinkedList;
 import java.util.List;
+import java.util.Queue;
 import java.util.Set;
+import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import static org.testng.Assert.*;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
+import uniol.apt.adt.exception.NoSuchNodeException;
+import uniol.apt.adt.pn.Marking;
 import uniol.apt.adt.pn.Place;
+import uniol.apt.adt.pn.Transition;
+import uniol.apt.adt.ts.TransitionSystem;
+import uniol.apt.analysis.coverability.CoverabilityGraph;
+import uniol.apt.analysis.exception.UnboundedException;
+import uniol.apt.analysis.isomorphism.IsomorphismLogic;
 import uniol.apt.io.parser.ParseException;
 import uniolunisaar.adam.ds.graph.synthesis.twoplayergame.symbolic.bddapproach.BDDGraph;
 import uniolunisaar.adam.ds.objectives.Condition;
@@ -26,12 +37,18 @@ import uniolunisaar.adam.exceptions.synthesis.pgwt.NoStrategyExistentException;
 import uniolunisaar.adam.exceptions.synthesis.pgwt.NoSuitableDistributionFoundException;
 import uniolunisaar.adam.exceptions.synthesis.pgwt.NotSupportedGameException;
 import uniolunisaar.adam.exceptions.synthesis.pgwt.SolvingException;
+import uniolunisaar.adam.logic.synthesis.builder.pgwt.symbolic.bddapproach.BDDPetriGameStrategyBuilder;
+import uniolunisaar.adam.logic.synthesis.builder.symbolic.bddapproach.distrenv.DistrEnvBDDGlobalSafetyPetriGameStrategyBuilder;
 import uniolunisaar.adam.logic.synthesis.builder.twoplayergame.symbolic.bddapproach.BDDGraphAndGStrategyBuilder;
 import uniolunisaar.adam.logic.synthesis.pgwt.calculators.CalculatorIDs;
 import uniolunisaar.adam.logic.synthesis.pgwt.calculators.ConcurrencyPreservingGamesCalculator;
 import uniolunisaar.adam.logic.synthesis.solver.symbolic.bddapproach.distrenv.DistrEnvBDDSolver;
 import uniolunisaar.adam.logic.synthesis.solver.symbolic.bddapproach.distrenv.DistrEnvBDDSolverFactory;
 import uniolunisaar.adam.logic.synthesis.solver.symbolic.bddapproach.distrenv.safety.DistrEnvBDDGlobalSafetySolver;
+import uniolunisaar.adam.tests.synthesis.symbolic.bddapproach.distrenv.reach.Edge;
+import uniolunisaar.adam.tests.synthesis.symbolic.bddapproach.distrenv.reach.GenericTransitionSystem;
+import uniolunisaar.adam.tests.synthesis.symbolic.bddapproach.distrenv.reach.ReachabilityGraphBuilder;
+import uniolunisaar.adam.tests.synthesis.symbolic.bddapproach.distrenv.reach.Vertex;
 import uniolunisaar.adam.tools.Logger;
 import uniolunisaar.adam.util.AdamExtensions;
 import uniolunisaar.adam.util.PGTools;
@@ -367,6 +384,92 @@ public class TestingSomeExamples {
     public static void renderGraphGameAndStrategies(String fileName, boolean existsWinningStrategy, List<Set<String>> partition) throws Exception {
         renderGraph(fileName, existsWinningStrategy, partition);
         renderGraphStrategy(fileName, existsWinningStrategy, partition);
+        renderPetriStrategy(fileName, existsWinningStrategy, partition);
+    }
+
+    @Test(dataProvider = "specific")
+    public static void strategyRespectsFlowsOfGame(String fileName, boolean existsWinningStrategy, List<Set<String>> partition) throws Exception {
+        if (!existsWinningStrategy) {
+            return;
+        }
+        PetriGameWithTransits game = game(fileName, partition);
+        DistrEnvBDDGlobalSafetySolver solver = (DistrEnvBDDGlobalSafetySolver) DistrEnvBDDSolverFactory.getInstance()
+                .getSolver(game, new DistrEnvBDDSolverOptions(false, false));
+        solver.initialize();
+
+        DistrEnvBDDGlobalSafetyPetriGameStrategyBuilder strategyBuilder = new DistrEnvBDDGlobalSafetyPetriGameStrategyBuilder(solver, solver.getGraphStrategy());
+        Set<Marking> gameMarkings = new ReachabilityGraphBuilder().build(game).getVertices().stream().map(Vertex::getState).collect(Collectors.toSet());
+        iterateBreadthFirstWithoutRepeat(new ReachabilityGraphBuilder().build(strategyBuilder.build()), edge -> {
+            Marking predecessor_s = edge.getFrom().getState();
+            Marking successor_s = edge.getTo().getState();
+            Transition transition_s = edge.getLabel();
+            Marking predecessor_g = strategyBuilder.lambda(predecessor_s);
+            Marking successor_g = strategyBuilder.lambda(successor_s);
+            Transition transition_g = strategyBuilder.lambda(transition_s);
+
+            assertTrue(gameMarkings.contains(predecessor_g));
+            assertEquals(predecessor_g.fireTransitions(transition_g), successor_g);
+        });
+    }
+
+    private static <S, L> void iterateBreadthFirstWithoutRepeat(GenericTransitionSystem<S, L> graph, Consumer<Edge<S, L>> forEachEdge) {
+        Set<Vertex<S>> visited = new HashSet<>();
+        Queue<Vertex<S>> q = new LinkedList<>();
+        q.add(graph.getInitial());
+        while (!q.isEmpty()) {
+            Vertex<S> current = q.poll();
+            Set<Edge<S, L>> outgoingEdges = graph.getOutgoingEdges(current);
+            for (Edge<S, L> outgoingEdge : outgoingEdges) {
+                Vertex<S> next = outgoingEdge.getTo();
+                forEachEdge.accept(outgoingEdge);
+                if (!visited.contains(next)) {
+                    q.add(next);
+                    visited.add(next);
+                }
+            }
+        }
+    }
+
+    @Test(dataProvider = "specific")
+    public static void petriStrategyBuildersIsomorphic(String fileName, boolean existsWinningStrategy, List<Set<String>> partition) throws Exception {
+        PetriGameWithTransits game = game(fileName, partition);
+        DistrEnvBDDGlobalSafetySolver solver = (DistrEnvBDDGlobalSafetySolver) DistrEnvBDDSolverFactory.getInstance()
+                .getSolver(game, new DistrEnvBDDSolverOptions(false, false));
+        solver.initialize();
+        try {
+            PetriGameWithTransits manuel;
+            try {
+                manuel = BDDPetriGameStrategyBuilder.getInstance().builtStrategy(solver, solver.getGraphStrategy());
+            } catch (NoSuchNodeException e) {
+                e.printStackTrace();
+                return;
+            }
+            PetriGameWithTransits lukas = new DistrEnvBDDGlobalSafetyPetriGameStrategyBuilder(solver, solver.getGraphStrategy()).build();
+            PGTools.savePG2PDF(outputDir + justFileName(fileName) + "_petri_strategy_manuel", manuel, false);
+            PGTools.savePG2PDF(outputDir + justFileName(fileName) + "_petri_strategy_lukas", lukas, false);
+            Thread.sleep(100);
+            TransitionSystem manuelLts;
+            try {
+                manuelLts = CoverabilityGraph.get(manuel).toReachabilityLTS();
+            } catch (UnboundedException e) {
+                e.printStackTrace();
+                return;
+            }
+            IsomorphismLogic isomorphismLogic = new IsomorphismLogic(
+                    CoverabilityGraph.get(lukas).toReachabilityLTS(),
+                    manuelLts,
+                    false
+            );
+            assertTrue(isomorphismLogic.isIsomorphic());
+        } catch (NoStrategyExistentException e) {
+            if (existsWinningStrategy) {
+                fail();
+            }
+            return;
+        }
+        if (!existsWinningStrategy) {
+            fail();
+        }
     }
 
     private static DistrEnvBDDSolver<? extends Condition<?>> solver(String fileName, List<Set<String>> partition) throws SolvingException, CouldNotFindSuitableConditionException, IOException, ParseException {
