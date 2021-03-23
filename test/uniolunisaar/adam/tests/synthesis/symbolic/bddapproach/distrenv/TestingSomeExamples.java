@@ -85,6 +85,8 @@ public class TestingSomeExamples {
     private final static Object[] different_choice = { "~/work/nets/different_choice.apt", ENV, PARTITIONED_IN_FILE };
     private final static Object[] sysChooseNoSysEnabled = { "~/work/nets/sysChooseNoSysEnabled.apt", SYS, PARTITIONED_IN_FILE };
     private final static Object[] systemCanWaitForever = { "~/work/nets/systemCanWaitForever.apt", SYS, AUTO_PARTITION };
+    private final static Object[] forkJoinInterrupt = { "~/work/nets/forkJoinInterrupt.apt", ENV, PARTITIONED_IN_FILE };
+    private final static Object[] assassin = { "~/work/nets/assassin.apt", ENV, PARTITIONED_IN_FILE };
 
     @DataProvider
     private static Object[][] concurrencyPreservingGames() {
@@ -131,7 +133,9 @@ public class TestingSomeExamples {
                 minimal, // the underlying net is cp
                 minimalNotFinishingEnv,
                 testNotStartingMcut,
-                sysChooseNoSysEnabled
+                sysChooseNoSysEnabled,
+                forkJoinInterrupt,
+                assassin
         };
     }
 
@@ -175,6 +179,8 @@ public class TestingSomeExamples {
                 different_choice,
                 sysChooseNoSysEnabled,
                 systemCanWaitForever,
+                forkJoinInterrupt,
+                assassin,
         };
     }
 
