@@ -1,9 +1,12 @@
 package uniolunisaar.adam.tests.synthesis.symbolic.bddapproach.distrenv;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import static org.testng.Assert.*;
@@ -185,10 +188,69 @@ public class TestingSomeExamples {
     }
 
     @DataProvider
-    private static Object[][] specific() {
+    private static Object[][] slow() {
         return new Object[][] {
-                sysChooseNoSysEnabled
+                finiteWithBad,
+                firstTry,
+                secondTry,
+                thirdTry,
+                myexample7,
+                robots_false,
+                robots_true,
+                accessor,
+                decision,
         };
+    }
+
+    @DataProvider
+    private static Object[][] specific() {
+        return varargs(
+                minus(all(), slow())
+        );
+    }
+
+    private static Object[][] varargs(Object[]... args) {
+        List<Object[]> ret = new ArrayList<>();
+        for (Object[] arg : args) {
+            if (arg instanceof Object[][]) {
+                ret.addAll(Arrays.asList((Object[][]) arg));
+            } else {
+                ret.add(arg);
+            }
+        }
+        return ret.toArray(Object[][]::new);
+    }
+
+    private static Object[][] intersect(Object[][]... values) {
+        if (values.length == 0) {
+            return new Object[0][];
+        } else if (values.length == 1) {
+            return values[0];
+        } else {
+            List<Object[]> r = new ArrayList<>(List.of(values[0]));
+            for (int i = 1; i < values.length; i++) {
+                r.retainAll(List.of(values[i]));
+            }
+            return r.toArray(Object[][]::new);
+        }
+    }
+
+    private static Object[][] minus(Object[][] set, Object[][]... subtract) {
+        if (subtract.length == 0) {
+            return set;
+        } else {
+            List<Object[]> r = new ArrayList<>(List.of(set));
+            for (Object[][] objects : subtract) {
+                r.removeAll(List.of(objects));
+            }
+            return r.toArray(Object[][]::new);
+        }
+    }
+
+    private static Object[][] filter(Object[][] set, Predicate<Object[]> filter) {
+        return List.of(set).stream()
+                .filter(filter)
+                .toArray(Object[][]::new);
     }
 
     static {
