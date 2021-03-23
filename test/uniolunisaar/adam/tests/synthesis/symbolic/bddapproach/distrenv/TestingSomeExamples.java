@@ -255,7 +255,7 @@ public class TestingSomeExamples {
                 .getSolver(game, new DistrEnvBDDSolverOptions(false, false));
         solver.initialize();
         BDDGraph bddGraph = BDDGraphAndGStrategyBuilder.getInstance().builtGraph(solver);
-        BDDTools.saveGraph2PDF(outputDir + justFileName(fileName), bddGraph, solver);
+        BDDTools.saveGraph2PDF(outputDir + justFileName(fileName) + "_graph", bddGraph, solver);
         Thread.sleep(100);
     }
 
@@ -267,7 +267,7 @@ public class TestingSomeExamples {
         solver.initialize();
         try {
             BDDGraph bddGraph = BDDGraphAndGStrategyBuilder.getInstance().builtGraphStrategy(solver, null);
-            BDDTools.saveGraph2PDF(outputDir + justFileName(fileName) + "_strategy", bddGraph, solver);
+            BDDTools.saveGraph2PDF(outputDir + justFileName(fileName) + "_graph_strategy", bddGraph, solver);
             Thread.sleep(100);
         } catch (NoStrategyExistentException e) {
             if (existsWinningStrategy) {
@@ -281,7 +281,28 @@ public class TestingSomeExamples {
     }
 
     @Test(dataProvider = "specific")
-    public static void renderGraphGameAndStrategy(String fileName, boolean existsWinningStrategy, List<Set<String>> partition) throws Exception {
+    public static void renderPetriStrategy(String fileName, boolean existsWinningStrategy, List<Set<String>> partition) throws Exception {
+        PetriGameWithTransits game = game(fileName, partition);
+        DistrEnvBDDGlobalSafetySolver solver = (DistrEnvBDDGlobalSafetySolver) DistrEnvBDDSolverFactory.getInstance()
+                .getSolver(game, new DistrEnvBDDSolverOptions(false, false));
+        solver.initialize();
+        try {
+            PetriGameWithTransits strategy = solver.getStrategy();
+            PGTools.savePG2PDF(outputDir + justFileName(fileName) + "_petri_strategy", strategy, false);
+            Thread.sleep(100);
+        } catch (NoStrategyExistentException e) {
+            if (existsWinningStrategy) {
+                fail();
+            }
+            return;
+        }
+        if (!existsWinningStrategy) {
+            fail();
+        }
+    }
+
+    @Test(dataProvider = "specific")
+    public static void renderGraphGameAndStrategies(String fileName, boolean existsWinningStrategy, List<Set<String>> partition) throws Exception {
         renderGraph(fileName, existsWinningStrategy, partition);
         renderGraphStrategy(fileName, existsWinningStrategy, partition);
     }
