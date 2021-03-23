@@ -25,6 +25,9 @@ import uniolunisaar.adam.ds.synthesis.pgwt.PetriGameWithTransits;
 import uniolunisaar.adam.ds.synthesis.solver.symbolic.bddapproach.distrenv.DistrEnvBDDSolverOptions;
 import uniolunisaar.adam.ds.synthesis.solver.symbolic.bddapproach.distrenv.DistrEnvBDDSolvingObject;
 import uniolunisaar.adam.exceptions.pnwt.CalculationInterruptedException;
+import uniolunisaar.adam.logic.synthesis.builder.symbolic.bddapproach.distrenv.DistrEnvBDDGlobalSafetyPetriGameStrategyBuilder;
+import uniolunisaar.adam.logic.synthesis.builder.twoplayergame.symbolic.bddapproach.BDDGraphAndGStrategyBuilder;
+import uniolunisaar.adam.logic.synthesis.solver.symbolic.bddapproach.BDDSolver;
 import uniolunisaar.adam.logic.synthesis.solver.symbolic.bddapproach.distrenv.DistrEnvBDDSolver;
 import uniolunisaar.adam.tools.Logger;
 import uniolunisaar.adam.util.benchmarks.synthesis.Benchmarks;
@@ -38,7 +41,59 @@ import uniolunisaar.adam.util.symbolic.bddapproach.BDDTools;
  * as described in
  * Synthesis in Distributed Environments
  * by Bernd Finkbeiner and Paul Gölz
- * in Figure 2: Graph(G).
+ * in Figure 2: Graph'(G).
+ * <p>
+ * A vertex in the graph game is made up of
+ * a marking in the petri game,
+ * a subset of the system transitions known as the commitment set
+ * and a subset of the marking known as the responsibility set.
+ * <p>
+ * An edge in the graph game is made up of two vertices.
+ * It's predecessor vertex it the state enabling the transition
+ * and it's successor vertex is the state of the game after taking the transition.
+ * The taken transition is not encoded,
+ * because it can be inferred from the change in the marking.
+ * <p>
+ * To encode the marking efficiently the set of places is partitioned.
+ * All system places are in the same partition.
+ * Two environment places cannot be in the same partition
+ * if they can be marked at the same time.
+ * Thus every transition can have at most one place per partition
+ * in it's preset and it's postset.
+ * {@link DistrEnvBDDSolvingObject#partitionPlaces(PetriGameWithTransits, boolean)}
+ * can in most cases find a valid partitioning.
+ * <p>
+ * A petri game is concurrency preserving,
+ * if the number of tokens is the same in every reachable marking
+ * and no token ever changes teams.
+ * Thus in concurrency preserving games there is one token in every partition
+ * in every reachable marking.
+ * For non concurrency preserving games
+ * there is also the option to have no token,
+ * so every partition has zero or one tokens in every reachable marking.
+ * <p>
+ * The system player may refuse to take a transition.
+ * Whenever a system transition is taken
+ * or a new system token is created
+ * the graph game enters a Top state,
+ * to allow the system player to choose a commitment set.
+ * A system transition can only fire, if it's in the commitment set.
+ * <p>
+ * The responsibility set prevents the environment player
+ * from giving the system player too much information.
+ * Without this restriction the graph game strategy could contain information,
+ * that cannot be translated to a petri game strategy.
+ * <p>
+ * The graph game can be extracted with
+ * {@link BDDGraphAndGStrategyBuilder#builtGraph(BDDSolver) BDDGraphAndGStrategyBuilder.getInstance().builtGraph(solver)}.
+ * The graph strategy can be extracted with
+ * {@link BDDGraphAndGStrategyBuilder#builtGraphStrategy(BDDSolver, Map) BDDGraphAndGStrategyBuilder.getInstance().builtGraphStrategy(solver, null)}.
+ * The Petri game strategy can be build with
+ * {@link DistrEnvBDDGlobalSafetyPetriGameStrategyBuilder}.
+ *
+ * @implSpec The system must have partition 0.
+ * @implNote When there is no commitment set in the graph game (Top vertex)
+ * the implementation encodes the empty commitment set.
  */
 public class DistrEnvBDDGlobalSafetySolver extends DistrEnvBDDSolver<GlobalSafety> {
 
