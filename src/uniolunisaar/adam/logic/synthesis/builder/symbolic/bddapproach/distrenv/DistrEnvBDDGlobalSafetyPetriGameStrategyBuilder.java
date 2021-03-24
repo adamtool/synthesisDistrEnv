@@ -7,6 +7,7 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.LinkedList;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Queue;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -82,6 +83,9 @@ public class DistrEnvBDDGlobalSafetyPetriGameStrategyBuilder {
             Set<Place> postsetInGame = transitionInGame.getPostset();
             for (Set<Place> preCut : this.cuts.get(predecessor)) {
                 for (Set<Place> postCut : this.cuts.get(successor)) {
+                    if (findExistingStrategyTransition(transitionInGame, presetInGame, postsetInGame).isPresent()) {
+                        continue;
+                    }
                     Transition transitionInStrategy = newStrategyTransition(transitionInGame);
                     for (Place prePlaceInStrategy : preCut) {
                         if (presetInGame.contains(lambda(prePlaceInStrategy))) {
@@ -103,6 +107,35 @@ public class DistrEnvBDDGlobalSafetyPetriGameStrategyBuilder {
                 }
             }
         }
+    }
+
+    private Optional<Transition> findExistingStrategyTransition(Transition transitionInGame, Set<Place> fromInStrategy, Set<Place> toInStrategy) {
+        Set<Place> fromReducedToTransition = new HashSet<>(),
+                fromUntouchedByTransition = new HashSet<>(),
+                toReducedToTransition = new HashSet<>(),
+                toUntouchedByTransition = new HashSet<>();
+        Set<Place> presetInGame = transitionInGame.getPreset();
+        for (Place placeInStrategy : fromInStrategy) {
+            if (presetInGame.contains(lambda(placeInStrategy))) {
+                fromReducedToTransition.add(placeInStrategy);
+            } else {
+                fromUntouchedByTransition.add(placeInStrategy);
+            }
+        }
+        Set<Place> postsetInGame = transitionInGame.getPostset();
+        for (Place placeInStrategy : toInStrategy) {
+            if (postsetInGame.contains(lambda(placeInStrategy))) {
+                toReducedToTransition.add(placeInStrategy);
+            } else {
+                toUntouchedByTransition.add(placeInStrategy);
+            }
+        }
+        return this.petriStrategy.getTransitions()
+                .stream()
+                .filter(t -> fromUntouchedByTransition.equals(toUntouchedByTransition))
+                .filter(t -> t.getPreset().equals(fromReducedToTransition))
+                .filter(t -> t.getPostset().equals(toReducedToTransition))
+                .findAny();
     }
 
     private void onNewVertex(BDDState predecessor, BDDState successor) {
