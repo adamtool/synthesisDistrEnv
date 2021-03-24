@@ -119,7 +119,12 @@ public class DistrEnvBDDGlobalSafetyPetriGameStrategyBuilder {
                 }
                 for (Set<Place> cut : this.cuts.get(predecessor)) {
                     boolean foundSuitableSubCut = false;
-                    for (Collection<Place> subCut : PowerSet.powerSet(cut)) {
+                    for (Collection<Place> subCutList : PowerSet.powerSet(cut)) {
+                        /*
+                         * The power set iterator uses array lists.
+                         * Lists may never equal sets...
+                         */
+                        Set<Place> subCut = Set.copyOf(subCutList);
                         if (!lambda(subCut).equals(transitionInGame.getPreset())) {
                             continue;
                         }
