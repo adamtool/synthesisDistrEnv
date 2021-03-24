@@ -180,13 +180,12 @@ public class DistrEnvBDDGlobalSafetyPetriGameStrategyBuilder {
         Place newPlaceInStrategy = this.petriStrategy.createPlace(placeInGame.getId() + DELIMITER + newNumber);
         this.lambdaPlaces.put(newPlaceInStrategy, placeInGame);
         this.petriStrategy.setOrigID(newPlaceInStrategy, placeInGame.getId());
-        if (PetriNetExtensionHandler.hasLabel(placeInGame)) {
-            PetriNetExtensionHandler.setLabel(newPlaceInStrategy, PetriNetExtensionHandler.getLabel(placeInGame));
-        }
+        newPlaceInStrategy.copyExtensions(placeInGame);
+        PetriNetExtensionHandler.setLabel(newPlaceInStrategy, placeInGame.getId());
         if (this.game.isSystem(placeInGame)) {
             this.petriStrategy.setSystem(newPlaceInStrategy);
         }
-        newPlaceInStrategy.copyExtensions(placeInGame);
+        PetriNetExtensionHandler.setOrigID(newPlaceInStrategy, placeInGame.getId());
         PetriNetExtensionHandler.clearCoords(newPlaceInStrategy);
         return newPlaceInStrategy;
     }
@@ -196,6 +195,8 @@ public class DistrEnvBDDGlobalSafetyPetriGameStrategyBuilder {
         Transition newTransitionInStrategy = this.petriStrategy.createTransition(transitionInGame.getId() + DELIMITER + newNumber);
         this.lambdaTransitions.put(newTransitionInStrategy, transitionInGame);
         newTransitionInStrategy.copyExtensions(transitionInGame);
+        newTransitionInStrategy.setLabel(transitionInGame.getLabel());
+        PetriNetExtensionHandler.setOrigID(newTransitionInStrategy, transitionInGame.getId());
         return newTransitionInStrategy;
     }
 
