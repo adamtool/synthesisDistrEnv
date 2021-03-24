@@ -11,6 +11,7 @@ import java.util.Queue;
 import java.util.Set;
 import java.util.stream.Collectors;
 import uniol.apt.adt.Node;
+import uniol.apt.adt.pn.Flow;
 import uniol.apt.adt.pn.Marking;
 import uniol.apt.adt.pn.PetriNet;
 import uniol.apt.adt.pn.Place;
@@ -21,6 +22,7 @@ import uniolunisaar.adam.ds.graph.synthesis.twoplayergame.symbolic.bddapproach.B
 import uniolunisaar.adam.ds.petrinet.PetriNetExtensionHandler;
 import uniolunisaar.adam.ds.synthesis.pgwt.PetriGameWithTransits;
 import uniolunisaar.adam.logic.synthesis.solver.symbolic.bddapproach.distrenv.safety.DistrEnvBDDGlobalSafetySolver;
+import uniolunisaar.adam.util.AdamExtensions;
 import uniolunisaar.adam.util.symbolic.bddapproach.BDDTools;
 
 public class DistrEnvBDDGlobalSafetyPetriGameStrategyBuilder {
@@ -82,13 +84,19 @@ public class DistrEnvBDDGlobalSafetyPetriGameStrategyBuilder {
                 for (Set<Place> postCut : this.cuts.get(successor)) {
                     Transition transitionInStrategy = newStrategyTransition(transitionInGame);
                     for (Place prePlaceInStrategy : preCut) {
-                        if (presetInGame.contains(lambda(prePlaceInStrategy)) || (!postCut.contains(prePlaceInStrategy) && lambda(postCut).contains(lambda(prePlaceInStrategy)))) {
-                            this.petriStrategy.createFlow(prePlaceInStrategy, transitionInStrategy, 2);
+                        if (presetInGame.contains(lambda(prePlaceInStrategy))) {
+                            this.petriStrategy.createFlow(prePlaceInStrategy, transitionInStrategy);
+                        } else if (!postCut.contains(prePlaceInStrategy) && lambda(postCut).contains(lambda(prePlaceInStrategy))) {
+                            Flow flow = this.petriStrategy.createFlow(prePlaceInStrategy, transitionInStrategy);
+                            flow.putExtension(AdamExtensions.flowMovesTokenBetweenEqualGamePlaces.name(), true);
                         }
                     }
                     for (Place postPlaceInStrategy : postCut) {
-                        if (postsetInGame.contains(lambda(postPlaceInStrategy)) || (!preCut.contains(postPlaceInStrategy) && lambda(preCut).contains(lambda(postPlaceInStrategy)))) {
-                            this.petriStrategy.createFlow(transitionInStrategy, postPlaceInStrategy, 2);
+                        if (postsetInGame.contains(lambda(postPlaceInStrategy))) {
+                            this.petriStrategy.createFlow(transitionInStrategy, postPlaceInStrategy);
+                        } else if (!preCut.contains(postPlaceInStrategy) && lambda(preCut).contains(lambda(postPlaceInStrategy))) {
+                            Flow flow = this.petriStrategy.createFlow(transitionInStrategy, postPlaceInStrategy);
+                            flow.putExtension(AdamExtensions.flowMovesTokenBetweenEqualGamePlaces.name(), true);
                         }
                     }
                     this.cuts.computeIfAbsent(successor, state -> new HashSet<>()).add(postCut);
@@ -240,7 +248,7 @@ public class DistrEnvBDDGlobalSafetyPetriGameStrategyBuilder {
         public String toString() {
             return "Edge{" + "\n" +
                     "    " + bddStateToString(this.predecessor) + "\n" +
-                    " -> " + bddStateToString(this.successor)+ "\n" +
+                    " -> " + bddStateToString(this.successor) + "\n" +
                     '}';
         }
     }
