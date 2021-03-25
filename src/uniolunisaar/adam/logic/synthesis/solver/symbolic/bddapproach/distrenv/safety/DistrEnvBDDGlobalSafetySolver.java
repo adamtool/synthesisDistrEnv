@@ -935,9 +935,15 @@ public class DistrEnvBDDGlobalSafetySolver extends DistrEnvBDDSolver<GlobalSafet
         for (int transitionIndex = 0; transitionIndex < transitions.size(); transitionIndex++) {
             Transition transition = transitions.get(transitionIndex);
             switch (dcs[TRANSITIONS[pos].vars()[transitionIndex]]) {
-                case TRUE -> yes.add(transition);
-                case FALSE -> no.add(transition);
-                case UNKNOWN -> undecided.add(transition);
+                case TRUE:
+                    yes.add(transition);
+                    break;
+                case FALSE:
+                    no.add(transition);
+                    break;
+                case UNKNOWN:
+                    undecided.add(transition);
+                    break;
             }
         }
         return Map.of(
@@ -1011,12 +1017,18 @@ public class DistrEnvBDDGlobalSafetySolver extends DistrEnvBDDSolver<GlobalSafet
             ret.append("\nT:").append(top).append(" ").append(commitmentToVerboseString(decodeCommitment(dcs, pos)));
         } else {
             switch (top) {
-                case TRUE -> ret.insert(0, "T ");
-                case FALSE -> ret.append("\n").append(
-                        systemPlayer.equals("?")
-                                ? commitmentToVerboseString(decodeCommitment(dcs, pos))
-                                : commitmentToConciseString(decodeCommitment(dcs, pos), systemPlayer.equals("-") ? null : getGame().getPlace(systemPlayer)));
-                case UNKNOWN -> ret.append("\nT:? ").append(commitmentToVerboseString(decodeCommitment(dcs, pos)));
+                case TRUE:
+                    ret.insert(0, "T ");
+                    break;
+                case FALSE:
+                    ret.append("\n").append(
+                            systemPlayer.equals("?")
+                                    ? commitmentToVerboseString(decodeCommitment(dcs, pos))
+                                    : commitmentToConciseString(decodeCommitment(dcs, pos), systemPlayer.equals("-") ? null : getGame().getPlace(systemPlayer)));
+                    break;
+                case UNKNOWN:
+                    ret.append("\nT:? ").append(commitmentToVerboseString(decodeCommitment(dcs, pos)));
+                    break;
             }
         }
         return ret.toString();
