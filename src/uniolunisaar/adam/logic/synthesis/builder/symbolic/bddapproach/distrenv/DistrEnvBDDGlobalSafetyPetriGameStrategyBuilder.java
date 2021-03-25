@@ -82,7 +82,7 @@ public class DistrEnvBDDGlobalSafetyPetriGameStrategyBuilder {
             Set<Place> postsetInGame = transitionInGame.getPostset();
             for (Set<Place> preCut : this.cuts.get(predecessor)) {
                 for (Set<Place> postCut : this.cuts.get(successor)) {
-                    if (findExistingStrategyTransition(transitionInGame, presetInGame, postsetInGame).isPresent()) {
+                    if (findExistingStrategyTransition(transitionInGame, preCut, postCut).isPresent()) {
                         continue;
                     }
                     Transition transitionInStrategy = newStrategyTransition(transitionInGame);
