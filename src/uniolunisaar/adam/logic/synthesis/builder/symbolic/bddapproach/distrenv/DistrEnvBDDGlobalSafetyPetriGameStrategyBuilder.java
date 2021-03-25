@@ -25,6 +25,42 @@ import uniolunisaar.adam.ds.synthesis.pgwt.PetriGameWithTransits;
 import uniolunisaar.adam.logic.synthesis.solver.symbolic.bddapproach.distrenv.safety.DistrEnvBDDGlobalSafetySolver;
 import uniolunisaar.adam.util.symbolic.bddapproach.BDDTools;
 
+/**
+ * Creates a petri game strategy from a graph game strategy
+ * for one system and many environment players.
+ * <p>
+ * A petri game strategy is a subnet of the unfolding of the original game.
+ * Often they are infinite, meaning they cannot be expressed graphically.
+ * The construction of the possibly infinite petri game strategy
+ * is described in
+ * Synthesis in Distributed Environments
+ * by Bernd Finkbeiner and Paul Gölz
+ * on pages 9 and 10 right after theorem 2 is stated.
+ * <p>
+ * To create a finite game with the same behaviour as the strategy
+ * we let some transitions lead back to earlier places.
+ * More precisely if a vertex P in the graph game strategy
+ * leeds back to a vertex S that was already visited,
+ * a set of new petri game strategy transition is created;
+ * one for ever pair of cuts p and s associated with P and S
+ * unless there exists already another transition with the desired behaviour.
+ * Each such transition is enabled by p and when fired reaches s.
+ * This way the petri game strategy is again in a marking
+ * for which the successor behavior is well defined.
+ * <p>
+ * After calling {@link #build()} one call the homomorphism lambda
+ * ({@link #lambda(Place)},
+ * {@link #lambda(Transition)},
+ * {@link #lambda(Marking)},
+ * {@link #lambda(Collection)})
+ * to find out what places and transition of the petri game strategy
+ * correspond to what places and transitions of the petri game.
+ * This information is also encoded in the
+ * {@link PetriNetExtensionHandler#getOrigID(uniol.apt.adt.pn.Node) origID}
+ * extension of the nodes.
+ *
+ * @author Lukas Panneke
+ */
 public class DistrEnvBDDGlobalSafetyPetriGameStrategyBuilder {
 
     private static final String DELIMITER = "_";
