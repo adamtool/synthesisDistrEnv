@@ -22,9 +22,7 @@ import uniolunisaar.adam.ds.graph.synthesis.twoplayergame.symbolic.bddapproach.B
 import uniolunisaar.adam.ds.graph.synthesis.twoplayergame.symbolic.bddapproach.BDDState;
 import uniolunisaar.adam.ds.petrinet.PetriNetExtensionHandler;
 import uniolunisaar.adam.ds.synthesis.pgwt.PetriGameWithTransits;
-import uniolunisaar.adam.ds.synthesis.solver.symbolic.bddapproach.distrenv.DistrEnvExtensionHandler;
 import uniolunisaar.adam.logic.synthesis.solver.symbolic.bddapproach.distrenv.safety.DistrEnvBDDGlobalSafetySolver;
-import uniolunisaar.adam.util.AdamExtensions;
 import uniolunisaar.adam.util.symbolic.bddapproach.BDDTools;
 
 public class DistrEnvBDDGlobalSafetyPetriGameStrategyBuilder {
@@ -93,7 +91,7 @@ public class DistrEnvBDDGlobalSafetyPetriGameStrategyBuilder {
                             this.petriStrategy.createFlow(prePlaceInStrategy, transitionInStrategy);
                         } else if (!postCut.contains(prePlaceInStrategy) && lambda(postCut).contains(lambda(prePlaceInStrategy))) {
                             Flow flow = this.petriStrategy.createFlow(prePlaceInStrategy, transitionInStrategy);
-                            DistrEnvExtensionHandler.setMovesTokenBetweenEqualGamePlaces(flow);
+                            this.petriStrategy.setSpecial(flow);
                         }
                     }
                     for (Place postPlaceInStrategy : postCut) {
@@ -101,7 +99,7 @@ public class DistrEnvBDDGlobalSafetyPetriGameStrategyBuilder {
                             this.petriStrategy.createFlow(transitionInStrategy, postPlaceInStrategy);
                         } else if (!preCut.contains(postPlaceInStrategy) && lambda(preCut).contains(lambda(postPlaceInStrategy))) {
                             Flow flow = this.petriStrategy.createFlow(transitionInStrategy, postPlaceInStrategy);
-                            DistrEnvExtensionHandler.setMovesTokenBetweenEqualGamePlaces(flow);
+                            this.petriStrategy.setSpecial(flow);
                         }
                     }
                     this.cuts.computeIfAbsent(successor, state -> new HashSet<>()).add(postCut);
