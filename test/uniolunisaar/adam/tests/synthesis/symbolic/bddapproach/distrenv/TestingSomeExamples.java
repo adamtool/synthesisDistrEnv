@@ -73,12 +73,12 @@ public class TestingSomeExamples {
     private final static Object[] firstTry = { "forallsafety/boundedunfolding/firstTry.apt", SYS, AUTO_PARTITION };
     private final static Object[] secondTry = { "forallsafety/boundedunfolding/secondTry.apt", SYS, AUTO_PARTITION };
     private final static Object[] thirdTry = { "forallsafety/boundedunfolding/thirdTry.apt", SYS, AUTO_PARTITION };
-    private final static Object[] constructedExample = { "forallsafety/constructedExample/constructedExample.apt", SYS, AUTO_PARTITION };
-    private final static Object[] constructedExampleWithoutLoop = { "forallsafety/constructedExampleWithoutLoop/constructedExampleWithoutLoop.apt", SYS, AUTO_PARTITION };
     private final static Object[] unreachableEnvTransition = { "forallsafety/cornercases/unreachableEnvTransition.apt", SYS, List.of(Set.of("S"), Set.of("E1", "E3"), Set.of("E2", "E4")) }; // no bad marking => system wins, automatic partitioning does not work for this one (2021-03-06)
     private final static Object[] unreachableEnvTransition2 = { "forallsafety/cornercases/unreachableEnvTransition2.apt", SYS, AUTO_PARTITION };
     private final static Object[] nondetDeadlock = { "forallsafety/deadlock/nondetDeadlock.apt", SYS, AUTO_PARTITION };
     private final static Object[] nondetDeadlock0 = { "forallsafety/deadlock/nondetDeadlock0.apt", SYS, AUTO_PARTITION };
+    private final static Object[] deadlockAvoidance1 = { "forallsafety/deadlockAvoidance/deadlockAvoidance1.apt", true, AUTO_PARTITION };
+    private final static Object[] deadlockAvoidance2 = { "forallsafety/deadlockAvoidance/deadlockAvoidance2.apt", true, AUTO_PARTITION };
     private final static Object[] firstExamplePaper = { "forallsafety/firstExamplePaper/firstExamplePaper.apt", SYS, AUTO_PARTITION };
     private final static Object[] firstExamplePaper_extended = { "forallsafety/firstExamplePaper/firstExamplePaper_extended.apt", ENV, AUTO_PARTITION };
     private final static Object[] myexample000 = { "forallsafety/jhh/myexample000.apt", ENV, AUTO_PARTITION }; // cp and no system token in reachable marking
@@ -94,10 +94,10 @@ public class TestingSomeExamples {
     private final static Object[] minimal = { "forallsafety/nm/minimal.apt", ENV, AUTO_PARTITION }; // no system token in reachable marking
     private final static Object[] minimalNotFinishingEnv = { "forallsafety/nm/minimalNotFinishingEnv.apt", ENV, AUTO_PARTITION }; // no system token in reachable marking
     private final static Object[] lateSameDecision = { "forallsafety/noStrategy/lateSameDecision.apt", ENV, AUTO_PARTITION };
+    private final static Object[] separateEnvSys = { "forallsafety/separateEnvSys.apt", true, AUTO_PARTITION };
     private final static Object[] envSkipsSys = { "forallsafety/testingNets/envSkipsSys.apt", ENV, AUTO_PARTITION };
     private final static Object[] infiniteSystemTrysToAvoidEnvUseBadPlace = { "forallsafety/testingNets/infiniteSystemTrysToAvoidEnvUseBadPlace.apt", ENV, AUTO_PARTITION };
     private final static Object[] testNotStartingMcut = { "forallsafety/tests/testNotStartingMcut.apt", SYS, AUTO_PARTITION };
-    private final static Object[] separateEnvSys = { "forallsafety/type2/separateEnvSys.apt", SYS, AUTO_PARTITION };
     private final static Object[] accessor = { "~/work/nets/paper/accessor.apt", SYS, PARTITIONED_IN_FILE };
     private final static Object[] chasing = { "~/work/nets/paper/chasing.apt", SYS, PARTITIONED_IN_FILE };
     private final static Object[] decision = { "~/work/nets/paper/decision.apt", PROBABLY_SYS, PARTITIONED_IN_FILE };
@@ -106,14 +106,15 @@ public class TestingSomeExamples {
     private final static Object[] systemCanWaitForever = { "~/work/nets/systemCanWaitForever.apt", SYS, AUTO_PARTITION };
     private final static Object[] forkJoinInterrupt = { "~/work/nets/forkJoinInterrupt.apt", ENV, PARTITIONED_IN_FILE };
     private final static Object[] assassin = { "~/work/nets/assassin.apt", ENV, PARTITIONED_IN_FILE };
+    private final static Object[] isolatedEnvironmentsSingleUse = { "~/work/nets/isolatedEnvironmentsSingleUse.apt", SYS, AUTO_PARTITION };
 
     @DataProvider
     private static Object[][] concurrencyPreservingGames() {
         return new Object[][] {
-                constructedExample,
-                constructedExampleWithoutLoop,
                 unreachableEnvTransition2,
                 nondetDeadlock,
+                deadlockAvoidance1,
+                deadlockAvoidance2,
                 firstExamplePaper,
                 firstExamplePaper_extended,
                 myexample4,
@@ -129,6 +130,7 @@ public class TestingSomeExamples {
                 decision,
                 different_choice,
                 systemCanWaitForever,
+                isolatedEnvironmentsSingleUse,
         };
     }
 
@@ -158,6 +160,7 @@ public class TestingSomeExamples {
         };
     }
 
+
     @DataProvider
     private static Object[][] all() {
         return new Object[][] {
@@ -167,12 +170,12 @@ public class TestingSomeExamples {
                 firstTry,
                 secondTry,
                 thirdTry,
-                constructedExample,
-                constructedExampleWithoutLoop,
                 unreachableEnvTransition,
                 unreachableEnvTransition2,
                 nondetDeadlock,
                 nondetDeadlock0,
+                deadlockAvoidance1,
+                deadlockAvoidance2,
                 firstExamplePaper,
                 firstExamplePaper_extended,
                 myexample000,
@@ -188,10 +191,10 @@ public class TestingSomeExamples {
                 minimal,
                 minimalNotFinishingEnv,
                 lateSameDecision,
+                separateEnvSys,
                 envSkipsSys,
                 infiniteSystemTrysToAvoidEnvUseBadPlace,
                 testNotStartingMcut,
-                separateEnvSys,
                 accessor,
                 chasing,
                 decision,
@@ -200,6 +203,7 @@ public class TestingSomeExamples {
                 systemCanWaitForever,
                 forkJoinInterrupt,
                 assassin,
+                isolatedEnvironmentsSingleUse,
         };
     }
 
@@ -300,11 +304,40 @@ public class TestingSomeExamples {
         }
     }
 
+    @Test
+    public static void checkAllPartitionedByConcurrencyPreserving() {
+        List<Object[]> tru = List.of(concurrencyPreservingGames());
+        List<Object[]> fals = List.of(notConcurrencyPreservingGames());
+        for (Object[] args : all()) {
+            if (tru.contains(args) == fals.contains(args)) {
+                PetriGameWithTransits game = null;
+                try {
+                    //noinspection unchecked
+                    game = game((String) args[0], (List) args[2]);
+                } catch (NotSupportedGameException | CouldNotCalculateException | ParseException | IOException e) {
+                    fail(Arrays.toString(args) + " is not partitioned regarding cp.");
+                }
+                Object value = game.getValue(CalculatorIDs.CONCURRENCY_PRESERVING.name());
+                if (!(value instanceof Boolean)) {
+                    fail(Arrays.toString(args) + " is not partitioned regarding cp.");
+                }
+                fail(Arrays.toString(args) + " is not partitioned regarding cp. It " + ((Boolean) value ? "is" : "is not") + " cp.");
+            }
+        }
+    }
+
     @Test(dataProvider = "concurrencyPreservingGames")
-    public static void isConcurrencyPreserving(String fileName, boolean unused, List<Set<String>> partition) throws NotSupportedGameException, CouldNotCalculateException, ParseException, IOException {
+    public static void isConcurrencyPreserving(String fileName, boolean hasStrategy, List<Set<String>> partition) throws NotSupportedGameException, CouldNotCalculateException, ParseException, IOException {
         Object value = game(fileName, partition).getValue(CalculatorIDs.CONCURRENCY_PRESERVING.name());
         assertEquals(value.getClass(), Boolean.class);
         assertTrue(((Boolean) value), fileName + " is not concurrency preserving.");
+    }
+
+    @Test(dataProvider = "notConcurrencyPreservingGames")
+    public static void isNotConcurrencyPreserving(String fileName, boolean hasStrategy, List<Set<String>> partition) throws NotSupportedGameException, CouldNotCalculateException, ParseException, IOException {
+        Object value = game(fileName, partition).getValue(CalculatorIDs.CONCURRENCY_PRESERVING.name());
+        assertEquals(value.getClass(), Boolean.class);
+        assertFalse(((Boolean) value), fileName + " is concurrency preserving.");
     }
 
     @Test(dataProvider = "all")
