@@ -13,6 +13,7 @@ import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
+import java.util.stream.StreamSupport;
 import static org.testng.Assert.*;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -22,6 +23,8 @@ import uniol.apt.adt.pn.Place;
 import uniol.apt.adt.pn.Transition;
 import uniol.apt.adt.ts.TransitionSystem;
 import uniol.apt.analysis.coverability.CoverabilityGraph;
+import uniol.apt.analysis.coverability.CoverabilityGraphEdge;
+import uniol.apt.analysis.coverability.CoverabilityGraphNode;
 import uniol.apt.analysis.exception.UnboundedException;
 import uniol.apt.analysis.isomorphism.IsomorphismLogic;
 import uniol.apt.io.parser.ParseException;
@@ -45,10 +48,6 @@ import uniolunisaar.adam.logic.synthesis.pgwt.calculators.ConcurrencyPreservingG
 import uniolunisaar.adam.logic.synthesis.solver.symbolic.bddapproach.distrenv.DistrEnvBDDSolver;
 import uniolunisaar.adam.logic.synthesis.solver.symbolic.bddapproach.distrenv.DistrEnvBDDSolverFactory;
 import uniolunisaar.adam.logic.synthesis.solver.symbolic.bddapproach.distrenv.safety.DistrEnvBDDGlobalSafetySolver;
-import uniolunisaar.adam.tests.synthesis.symbolic.bddapproach.distrenv.reach.Edge;
-import uniolunisaar.adam.tests.synthesis.symbolic.bddapproach.distrenv.reach.GenericTransitionSystem;
-import uniolunisaar.adam.tests.synthesis.symbolic.bddapproach.distrenv.reach.ReachabilityGraphBuilder;
-import uniolunisaar.adam.tests.synthesis.symbolic.bddapproach.distrenv.reach.Vertex;
 import uniolunisaar.adam.tools.Logger;
 import uniolunisaar.adam.util.AdamExtensions;
 import uniolunisaar.adam.util.PGTools;
@@ -398,11 +397,11 @@ public class TestingSomeExamples {
         solver.initialize();
 
         DistrEnvBDDGlobalSafetyPetriGameStrategyBuilder strategyBuilder = new DistrEnvBDDGlobalSafetyPetriGameStrategyBuilder(solver, solver.getGraphStrategy());
-        Set<Marking> gameMarkings = new ReachabilityGraphBuilder().build(game).getVertices().stream().map(Vertex::getState).collect(Collectors.toSet());
-        iterateBreadthFirstWithoutRepeat(new ReachabilityGraphBuilder().build(strategyBuilder.build()), edge -> {
-            Marking predecessor_s = edge.getFrom().getState();
-            Marking successor_s = edge.getTo().getState();
-            Transition transition_s = edge.getLabel();
+        Set<Marking> gameMarkings = StreamSupport.stream(CoverabilityGraph.getReachabilityGraph(game).getNodes().spliterator(), false).map(CoverabilityGraphNode::getMarking).collect(Collectors.toSet());
+        iterateBreadthFirstWithoutRepeat(CoverabilityGraph.getReachabilityGraph(strategyBuilder.build()), edge -> {
+            Marking predecessor_s = edge.getSource().getMarking();
+            Marking successor_s = edge.getTarget().getMarking();
+            Transition transition_s = edge.getTransition();
             Marking predecessor_g = strategyBuilder.lambda(predecessor_s);
             Marking successor_g = strategyBuilder.lambda(successor_s);
             Transition transition_g = strategyBuilder.lambda(transition_s);
@@ -412,15 +411,15 @@ public class TestingSomeExamples {
         });
     }
 
-    private static <S, L> void iterateBreadthFirstWithoutRepeat(GenericTransitionSystem<S, L> graph, Consumer<Edge<S, L>> forEachEdge) {
-        Set<Vertex<S>> visited = new HashSet<>();
-        Queue<Vertex<S>> q = new LinkedList<>();
-        q.add(graph.getInitial());
+    private static void iterateBreadthFirstWithoutRepeat(CoverabilityGraph graph, Consumer<CoverabilityGraphEdge> forEachEdge) {
+        Set<CoverabilityGraphNode> visited = new HashSet<>();
+        Queue<CoverabilityGraphNode> q = new LinkedList<>();
+        q.add(graph.getInitialNode());
         while (!q.isEmpty()) {
-            Vertex<S> current = q.poll();
-            Set<Edge<S, L>> outgoingEdges = graph.getOutgoingEdges(current);
-            for (Edge<S, L> outgoingEdge : outgoingEdges) {
-                Vertex<S> next = outgoingEdge.getTo();
+            CoverabilityGraphNode current = q.poll();
+            Set<CoverabilityGraphEdge> outgoingEdges = current.getPostsetEdges();
+            for (CoverabilityGraphEdge outgoingEdge : outgoingEdges) {
+                CoverabilityGraphNode next = outgoingEdge.getTarget();
                 forEachEdge.accept(outgoingEdge);
                 if (!visited.contains(next)) {
                     q.add(next);
