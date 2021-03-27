@@ -4,22 +4,26 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.BinaryOperator;
 import java.util.stream.Collectors;
 import org.apache.commons.collections4.CollectionUtils;
 import uniol.apt.adt.pn.Marking;
 import uniol.apt.adt.pn.Place;
 import uniol.apt.adt.pn.Transition;
 import uniolunisaar.adam.ds.objectives.Condition;
+import uniolunisaar.adam.ds.petrinet.PetriNetExtensionHandler;
 import uniolunisaar.adam.ds.synthesis.pgwt.PetriGameWithTransits;
 import uniolunisaar.adam.ds.synthesis.solver.symbolic.bddapproach.BDDSolvingObject;
 import uniolunisaar.adam.exceptions.pnwt.NetNotSafeException;
 import uniolunisaar.adam.exceptions.synthesis.pgwt.InvalidPartitionException;
 import uniolunisaar.adam.exceptions.synthesis.pgwt.NoSuitableDistributionFoundException;
 import uniolunisaar.adam.exceptions.synthesis.pgwt.NotSupportedGameException;
+import uniolunisaar.adam.exceptions.synthesis.pgwt.UnboundedPGException;
 import uniolunisaar.adam.logic.synthesis.pgwt.calculators.CalculatorIDs;
 import uniolunisaar.adam.logic.synthesis.pgwt.partitioning.Partitioner;
 import uniolunisaar.adam.tools.Logger;
 import uniolunisaar.adam.util.PGTools;
+import uniolunisaar.adam.util.PNTools;
 
 /**
  * This class serves for storing the input of the solving algorithm, i.e., the
@@ -31,6 +35,7 @@ import uniolunisaar.adam.util.PGTools;
 public class DistrEnvBDDSolvingObject<W extends Condition<W>> extends BDDSolvingObject<W> {
 
     private List<Transition> systemTransitions, envTransitions;
+    private Map<Integer, Long> boundOfPartitions;
 
     public DistrEnvBDDSolvingObject(PetriGameWithTransits game, W winCon) throws NotSupportedGameException, NetNotSafeException, NoSuitableDistributionFoundException, InvalidPartitionException {
         this(game, winCon, false);
@@ -46,8 +51,9 @@ public class DistrEnvBDDSolvingObject<W extends Condition<W>> extends BDDSolving
 
     @Override
     protected void checkPrecondition(PetriGameWithTransits game) throws NetNotSafeException, NotSupportedGameException {
-        if (!game.getBounded().isSafe()) {
-            throw new NetNotSafeException(game.getBounded().unboundedPlace.toString(), game.getBounded().sequence.toString());
+        PNTools.addsBoundedness2Places(game);
+        if (!game.getBounded().isBounded()) {
+            throw new UnboundedPGException(game, game.getBounded().unboundedPlace);
         }
         PGTools.checkAtMostOneSysToken(game);
     }
@@ -179,6 +185,14 @@ public class DistrEnvBDDSolvingObject<W extends Condition<W>> extends BDDSolving
             throw new AssertionError("Every system transition must have exactly one system place in it's postset (for this solver)");
         }
         return currentPlaceOfSystemPlayer.iterator().next();
+    }
+
+    public long getBoundOfPartition(int partition) {
+        if (this.boundOfPartitions == null) {
+            this.boundOfPartitions = this.getGame().getPlaces().stream()
+                    .collect(Collectors.toMap(this.getGame()::getPartition, PetriNetExtensionHandler::getBoundedness, BinaryOperator.maxBy(Long::compareTo)));
+        }
+        return this.boundOfPartitions.get(partition);
     }
 
     public Set<Marking> getBadMarkings() {

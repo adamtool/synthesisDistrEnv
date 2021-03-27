@@ -4,6 +4,7 @@ import java.math.BigInteger;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -11,16 +12,21 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.StringJoiner;
 import java.util.function.Function;
+import java.util.function.LongUnaryOperator;
 import java.util.stream.Collector;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
+import java.util.stream.LongStream;
+import java.util.stream.Stream;
 import net.sf.javabdd.BDD;
 import net.sf.javabdd.BDDDomain;
 import org.apache.commons.collections4.CollectionUtils;
 import uniol.apt.adt.pn.Marking;
 import uniol.apt.adt.pn.Place;
+import uniol.apt.adt.pn.Token;
 import uniol.apt.adt.pn.Transition;
 import uniolunisaar.adam.ds.objectives.global.GlobalSafety;
+import uniolunisaar.adam.ds.petrinet.PetriNetExtensionHandler;
 import uniolunisaar.adam.ds.synthesis.pgwt.PetriGameWithTransits;
 import uniolunisaar.adam.ds.synthesis.solver.symbolic.bddapproach.distrenv.DistrEnvBDDSolverOptions;
 import uniolunisaar.adam.ds.synthesis.solver.symbolic.bddapproach.distrenv.DistrEnvBDDSolvingObject;
@@ -28,9 +34,13 @@ import uniolunisaar.adam.exceptions.CalculationInterruptedException;
 import uniolunisaar.adam.exceptions.synthesis.pgwt.NoStrategyExistentException;
 import uniolunisaar.adam.logic.synthesis.builder.symbolic.bddapproach.distrenv.DistrEnvBDDGlobalSafetyPetriGameStrategyBuilder;
 import uniolunisaar.adam.logic.synthesis.builder.twoplayergame.symbolic.bddapproach.BDDGraphAndGStrategyBuilder;
+import uniolunisaar.adam.logic.synthesis.pgwt.calculators.CalculatorIDs;
+import uniolunisaar.adam.logic.synthesis.pgwt.calculators.ConcurrencyPreservingGamesCalculator;
 import uniolunisaar.adam.logic.synthesis.solver.symbolic.bddapproach.BDDSolver;
 import uniolunisaar.adam.logic.synthesis.solver.symbolic.bddapproach.distrenv.DistrEnvBDDSolver;
+import uniolunisaar.adam.logic.synthesis.solver.symbolic.bddapproach.distrenv.DistrEnvBDDSolverFactory;
 import uniolunisaar.adam.tools.Logger;
+import uniolunisaar.adam.util.PGTools;
 import uniolunisaar.adam.util.benchmarks.synthesis.Benchmarks;
 import uniolunisaar.adam.util.symbolic.bddapproach.BDDTools;
 
@@ -133,12 +143,14 @@ public class DistrEnvBDDGlobalSafetySolver extends DistrEnvBDDSolver<GlobalSafet
     protected static final int FALSE = 0;
     protected static final int UNKNOWN = -1;
 
+    /* [pos][partition] */
+    protected BDDDomain[][] PLACE_MULTIPLICITY;
     /* [pos] */
     protected BDDDomain[] TRANSITIONS;
     /* [pos] */
     protected BDDDomain[] TOP;
-    /* [pos] */
-    protected BDDDomain[] RESPONSIBILITY;
+    /* [pos][partition] */
+    protected BDDDomain[][] RESPONSIBILITY_MULTIPLICITY;
 
     /**
      * Stream collector for or-ing a stream of BDDs.
@@ -183,20 +195,22 @@ public class DistrEnvBDDGlobalSafetySolver extends DistrEnvBDDSolver<GlobalSafet
     protected void createVariables() {
         int numberOfPartitions = this.getSolvingObject().getMaxTokenCountInt();
         PLACES = new BDDDomain[2][numberOfPartitions];
+        PLACE_MULTIPLICITY = new BDDDomain[2][numberOfPartitions];
         TRANSITIONS = new BDDDomain[2];
         TOP = new BDDDomain[2];
-        RESPONSIBILITY = new BDDDomain[2];
+        RESPONSIBILITY_MULTIPLICITY = new BDDDomain[2][numberOfPartitions];
+
         for (int pos : List.of(PREDECESSOR, SUCCESSOR)) {
             for (int partition = 0; partition < numberOfPartitions; partition++) {
                 PLACES[pos][partition] = this.getFactory().extDomain(
                         this.getSolvingObject().getDevidedPlaces()[partition].size()
                                 + (this.getSolvingObject().isConcurrencyPreserving() ? 0 : 1));
-
-                /* for every system transition the system player must choose whether or not to allow that transition. */
-                TRANSITIONS[pos] = this.getFactory().extDomain(BigInteger.TWO.pow(this.getSolvingObject().getSystemTransitions().size()));
-                TOP[pos] = this.getFactory().extDomain(2);
-                RESPONSIBILITY[pos] = this.getFactory().extDomain(BigInteger.TWO.pow(numberOfPartitions));
+                PLACE_MULTIPLICITY[pos][partition] = this.getFactory().extDomain(this.getSolvingObject().getBoundOfPartition(partition) + 1);
+                RESPONSIBILITY_MULTIPLICITY[pos][partition] = this.getFactory().extDomain(this.getSolvingObject().getBoundOfPartition(partition) + 1);
             }
+            /* for every system transition the system player must choose whether or not to allow that transition. */
+            TRANSITIONS[pos] = this.getFactory().extDomain(BigInteger.TWO.pow(this.getSolvingObject().getSystemTransitions().size()));
+            TOP[pos] = this.getFactory().extDomain(2);
         }
         setDCSLength(getFactory().varNum() / 2); // TODO what is this?
     }
@@ -204,9 +218,14 @@ public class DistrEnvBDDGlobalSafetySolver extends DistrEnvBDDSolver<GlobalSafet
     @Override
     protected BDD getVariables(int pos) {
         return TOP[pos].set()
-                .and(TRANSITIONS[pos].set())
-                .and(RESPONSIBILITY[pos].set())
-                .and(Arrays.stream(PLACES[pos])
+                .andWith(TRANSITIONS[pos].set())
+                .andWith(Arrays.stream(PLACES[pos])
+                        .map(BDDDomain::set)
+                        .collect(and()))
+                .andWith(Arrays.stream(PLACE_MULTIPLICITY[pos])
+                        .map(BDDDomain::set)
+                        .collect(and()))
+                .andWith(Arrays.stream(RESPONSIBILITY_MULTIPLICITY[pos])
                         .map(BDDDomain::set)
                         .collect(and()));
     }
@@ -214,10 +233,15 @@ public class DistrEnvBDDGlobalSafetySolver extends DistrEnvBDDSolver<GlobalSafet
     @Override
     protected BDD preBimpSucc() {
         return TOP[PREDECESSOR].buildEquals(TOP[SUCCESSOR])
-                .and(TRANSITIONS[PREDECESSOR].buildEquals(TRANSITIONS[SUCCESSOR]))
-                .and(RESPONSIBILITY[PREDECESSOR].buildEquals(RESPONSIBILITY[SUCCESSOR]))
-                .and(this.streamPartitions()
+                .andWith(TRANSITIONS[PREDECESSOR].buildEquals(TRANSITIONS[SUCCESSOR]))
+                .andWith(this.streamPartitions()
                         .mapToObj(partition -> PLACES[PREDECESSOR][partition].buildEquals(PLACES[SUCCESSOR][partition]))
+                        .collect(and()))
+                .andWith(this.streamPartitions()
+                        .mapToObj(partition -> PLACE_MULTIPLICITY[PREDECESSOR][partition].buildEquals(PLACE_MULTIPLICITY[SUCCESSOR][partition]))
+                        .collect(and()))
+                .andWith(this.streamPartitions()
+                        .mapToObj(partition -> RESPONSIBILITY_MULTIPLICITY[PREDECESSOR][partition].buildEquals(RESPONSIBILITY_MULTIPLICITY[SUCCESSOR][partition]))
                         .collect(and()));
     }
 
@@ -226,10 +250,6 @@ public class DistrEnvBDDGlobalSafetySolver extends DistrEnvBDDSolver<GlobalSafet
     private BDD codeSystemTransition(Transition transition, int pos) {
         int transitionIndex = this.getSolvingObject().getSystemTransitions().indexOf(transition);
         return this.getFactory().ithVar(TRANSITIONS[pos].vars()[transitionIndex]);
-    }
-
-    protected BDD codeResponsibility(int partition, int pos) {
-        return this.getFactory().ithVar(RESPONSIBILITY[pos].vars()[partition]);
     }
 
     protected IntStream streamPartitions() {
@@ -248,7 +268,8 @@ public class DistrEnvBDDGlobalSafetySolver extends DistrEnvBDDSolver<GlobalSafet
                  */
                 .andWith(top(pos).biimpWith(tokenExists(PARTITION_OF_SYSTEM_PLAYER, pos)))
                 .andWith(nothingChosen(pos))
-                .andWith(onlySystemInResponsibilitySet(PREDECESSOR));
+                .andWith(onlySystemInResponsibilitySet(PREDECESSOR))
+                .andWith(responsibilityContainsSystem(PREDECESSOR));
     }
 
     /**
@@ -320,32 +341,55 @@ public class DistrEnvBDDGlobalSafetySolver extends DistrEnvBDDSolver<GlobalSafet
             ret.andWith(commitmentsEqual());
         }
 
-        BDD add, remove = transition.getPreset().stream()
-                .map(this.getGame()::getPartition)
-                .map(partition -> codeResponsibility(partition, SUCCESSOR))
-                .collect(and());
-        if (createsNewSystemToken) {
-            /*
-             * if this transition creates a new system token,
-             * choose that as the new entry to the responsibility set.
-             * otherwise there is no way for the system token to add the system in the future,
-             * meaning that no system transition can ever fire.
-             */
-            add = codeResponsibility(PARTITION_OF_SYSTEM_PLAYER, SUCCESSOR);
-        } else {
-            /*
-             * if no system token is created, choose a random token.
-             */
-            add = transition.getPostset().stream()
-                    .map(this.getGame()::getPartition)
-                    .map(partition -> codeResponsibility(partition, SUCCESSOR))
-                    .collect(xor());
-        }
-        ret.andWith(responsibilitiesEqual().exist(remove).andWith(remove.not()).exist(add).andWith(add));
+        ret.andWith(updateResponsibilityOnPurelyEnvironmentalEdge(transition, createsNewSystemToken));
         ret.andWith(responsibilitySubsetMarking(SUCCESSOR));
 
         ret.andWith(fire(transition));
         return ret;
+    }
+
+    private BDD updateResponsibilityOnPurelyEnvironmentalEdge(Transition transition, boolean createsNewSystemToken) {
+        PetriGameWithTransits game = this.getSolvingObject().getGame();
+
+        Set<Place> pre = transition.getPreset();
+        Set<Place> post = transition.getPostset();
+
+        Map<Integer, Place> prePartitionToPlace = pre.stream()
+                .collect(Collectors.toMap(game::getPartition, Function.identity()));
+        Map<Integer, Place> postPartitionToPlace = post.stream()
+                .collect(Collectors.toMap(game::getPartition, Function.identity()));
+
+        Set<Integer> prePartitions = pre.stream()
+                .map(game::getPartition)
+                .collect(Collectors.toSet());
+        Set<Integer> postPartitions = post.stream()
+                .map(game::getPartition)
+                .collect(Collectors.toSet());
+        /*
+         * if this transition creates a new system token,
+         * choose that as the new entry to the responsibility set.
+         * otherwise there is no way for the system token to add the system in the future,
+         * meaning that no system transition can ever fire.
+         * if no system token is created, choose a random token nondeterministically.
+         */
+        return (createsNewSystemToken ? Stream.of(PARTITION_OF_SYSTEM_PLAYER) : postPartitions.stream())
+                .map(chosenPartition -> this.streamPartitions(true)
+                        .mapToObj(partition -> {
+                            if (prePartitions.contains(partition)) {
+                                Place prePlace = prePartitionToPlace.get(partition);
+                                int consumeWeight = this.getGame().getFlow(prePlace, transition).getWeight();
+                                return updateResponsibility(partition, 0, bound(prePlace),
+                                        r -> Math.max(0, r - consumeWeight) + (partition == chosenPartition ? 1 : 0));
+                            } else {
+                                if (partition == chosenPartition) {
+                                    return updateResponsibility(partition, 0, bound(postPartitionToPlace.get(partition)) - 1, r -> r + 1);
+                                } else {
+                                    return responsibilitiesEqual(partition);
+                                }
+                            }
+                        })
+                        .collect(and()))
+                .collect(xor());
     }
 
     /**
@@ -369,13 +413,17 @@ public class DistrEnvBDDGlobalSafetySolver extends DistrEnvBDDSolver<GlobalSafet
         ret.andWith(nothingChosen(SUCCESSOR));
         ret.andWith(fire(transition));
 
-        Set<Integer> prePartitions = transition.getPreset().stream()
-                .map(this.getGame()::getPartition)
-                .collect(Collectors.toSet());
-        BDD responsibilitySubsetPreset = this.streamPartitions(false)
-                .filter(partition -> !prePartitions.contains(partition))
-                .mapToObj(partition -> codeResponsibility(partition, PREDECESSOR).not())
+        Map<Integer, Place> prePartitionToPlace = transition.getPreset().stream()
+                .collect(Collectors.toMap(this.getGame()::getPartition, Function.identity()));
+        BDD responsibilitySubsetPreset = this.streamPartitions(true)
+                .mapToObj(partition -> {
+                    int weight = Optional.ofNullable(prePartitionToPlace.get(partition))
+                            .map(place -> this.getGame().getFlow(place, transition).getWeight())
+                            .orElse(0);
+                    return codeResponsibilityAtMost(partition, PREDECESSOR, weight);
+                })
                 .collect(and());
+
         ret.andWith(responsibilitySubsetPreset);
         ret.andWith(onlySystemInResponsibilitySet(SUCCESSOR));
 
@@ -501,6 +549,10 @@ public class DistrEnvBDDGlobalSafetySolver extends DistrEnvBDDSolver<GlobalSafet
         return reachableVertices.and(poisonedVertices.not().andWith(wellformed()));
     }
 
+    protected long bound(Place place) {
+        return PetriNetExtensionHandler.getBoundedness(place);
+    }
+
     protected BDD fire(Transition transition) {
         PetriGameWithTransits game = this.getSolvingObject().getGame();
 
@@ -519,49 +571,47 @@ public class DistrEnvBDDGlobalSafetySolver extends DistrEnvBDDSolver<GlobalSafet
                 .map(game::getPartition)
                 .collect(Collectors.toSet());
 
-        /* partitions that had a token before the transition has fired, but don't have one afterwards */
-        /* CP => nothing consumed */
-        assert !getSolvingObject().isConcurrencyPreserving() || CollectionUtils.subtract(prePartitions, postPartitions).isEmpty();
-        BDD consumed = CollectionUtils.subtract(prePartitions, postPartitions).stream()
-                .map(partition -> codePlace(prePartitionToPlace.get(partition), PREDECESSOR, partition).andWith(notUsedToken(SUCCESSOR, partition)))
+        BDD flows = this.streamPartitions(true)
+                .mapToObj(partition -> {
+                    if (prePartitions.contains(partition) && postPartitions.contains(partition)) {
+                        /* moves the token within a partition. That means between two different places, or on the same place */
+                        Place prePlace = prePartitionToPlace.get(partition);
+                        Place postPlace = postPartitionToPlace.get(partition);
+                        int consumeWeight = this.getGame().getFlow(prePlace, transition).getWeight();
+                        int produceWeight = this.getGame().getFlow(transition, postPlace).getWeight();
+                        BDD ret = codePlace(prePlace, PREDECESSOR, partition)
+                                .andWith(codePlace(postPlace, SUCCESSOR, partition));
+                        if (prePlace.equals(postPlace)) {
+                            /* can still change the number of tokens, but not to 0. */
+                            return ret.andWith(updatePlaceMultiplicity(partition, consumeWeight, Math.min(bound(prePlace), bound(postPlace) + produceWeight),
+                                    r -> r - consumeWeight + produceWeight));
+                        } else {
+                            /* prePlace looses all tokens, postPlace had none and now gains some tokens. */
+                            return ret.andWith(codePlaceMultiplicity(partition, PREDECESSOR, consumeWeight))
+                                    .andWith(codePlaceMultiplicity(partition, SUCCESSOR, produceWeight));
+                        }
+                    } else if (prePartitions.contains(partition)) {
+                        /* up to all tokens are removed from this partition */
+                        Place prePlace = prePartitionToPlace.get(partition);
+                        int consumeWeight = this.getGame().getFlow(prePlace, transition).getWeight();
+                        return codePlace(prePlace, PREDECESSOR, partition, consumeWeight)
+                                .andWith(notUsedToken(SUCCESSOR, partition))
+                                .andWith(codePlaceMultiplicity(partition, SUCCESSOR, 0))
+                                .orWith(updatePlace(prePlace, prePlace, partition, consumeWeight + 1, bound(prePlace), m -> m - consumeWeight));
+                    } else if (postPartitions.contains(partition)) {
+                        /* previously this partition had at least 0 tokens, now there is at least 1. */
+                        Place postPlace = postPartitionToPlace.get(partition);
+                        int produceWeight = this.getGame().getFlow(transition, postPlace).getWeight();
+                        return notUsedToken(PREDECESSOR, partition)
+                                .andWith(codePlaceMultiplicity(partition, PREDECESSOR, 0))
+                                .andWith(codePlace(postPlace, SUCCESSOR, partition, produceWeight))
+                                .orWith(updatePlace(postPlace, postPlace, partition, 1, bound(postPlace) - produceWeight, m -> m + produceWeight));
+                    } else {
+                        /* this partition is not attached to the transition, everything stays the same */
+                        return markingEqual(partition).andWith(onlyExistingPlacesInMarking(PREDECESSOR));
+                    }
+                })
                 .collect(and());
-        /*
-         * notUsedToken(SUCCESSOR, partition) is equal to codePlace(0, SUCCESSOR, partition).
-         * This could be problematic, because in the concurrency preserving case
-         * the place id 0 does refer to an actual place.
-         * But in the concurrency preserving case
-         * no token can ever be taken out of a partition,
-         * but only be moved within the partition.
-         * Thus there can never ba a partition without a token
-         * and this code is never executed when it could be problematic.
-         */
-
-        /* partitions that had no token before the transition has fired, but have one afterwards */
-        /* CP => nothing produced */
-        assert !getSolvingObject().isConcurrencyPreserving() || CollectionUtils.subtract(postPartitions, prePartitions).isEmpty();
-        BDD produced = CollectionUtils.subtract(postPartitions, prePartitions).stream()
-                .map(partition -> notUsedToken(PREDECESSOR, partition).andWith(codePlace(postPartitionToPlace.get(partition), SUCCESSOR, partition)))
-                .collect(and());
-
-        /* partitions that have a token before and after the transition fires */
-        BDD moved = CollectionUtils.intersection(postPartitions, prePartitions).stream()
-                .map(partition -> codePlace(prePartitionToPlace.get(partition), PREDECESSOR, partition).andWith(codePlace(postPartitionToPlace.get(partition), SUCCESSOR, partition)))
-                .collect(and());
-
-        /* partitions that have no contact with the transition */
-        BDD unaffected = this.streamPartitions()
-                .filter(o -> !prePartitions.contains(o))
-                .filter(o -> !postPartitions.contains(o))
-                .mapToObj(this::markingEqual)
-                .collect(and())
-                .andWith(onlyExistingPlacesInMarking(PREDECESSOR))
-                .andWith(onlyExistingPlacesInMarking(SUCCESSOR));
-
-        BDD flows = consumed
-                .andWith(produced)
-                .andWith(moved)
-                .andWith(unaffected);
-
         return enabled(transition, PREDECESSOR).andWith(flows);
     }
 
@@ -641,6 +691,12 @@ public class DistrEnvBDDGlobalSafetySolver extends DistrEnvBDDSolver<GlobalSafet
                 .collect(and());
     }
 
+    protected BDD unmarkedPlaceIffMultiplicityZero(int pos) {
+        return this.streamPartitions(true)
+                .mapToObj(partition -> tokenExists(partition, pos).biimpWith(codePlaceMultiplicity(partition, pos, 0).not()))
+                .collect(and());
+    }
+
     protected BDD tokenExists(int partition, int pos) {
         if (this.getSolvingObject().isConcurrencyPreserving()) {
             return getOne();
@@ -650,12 +706,13 @@ public class DistrEnvBDDGlobalSafetySolver extends DistrEnvBDDSolver<GlobalSafet
     }
 
     protected BDD markingEqual(int partition) {
-        return PLACES[PREDECESSOR][partition].buildEquals(PLACES[SUCCESSOR][partition]);
+        return PLACES[PREDECESSOR][partition].buildEquals(PLACES[SUCCESSOR][partition])
+                .andWith(PLACE_MULTIPLICITY[PREDECESSOR][partition].buildEquals(PLACE_MULTIPLICITY[SUCCESSOR][partition]));
     }
 
     protected BDD markingsEqual() {
         return this.streamPartitions()
-                .mapToObj(partition -> markingEqual(partition))
+                .mapToObj(this::markingEqual)
                 .collect(and());
     }
 
@@ -673,24 +730,32 @@ public class DistrEnvBDDGlobalSafetySolver extends DistrEnvBDDSolver<GlobalSafet
                 .collect(or());
     }
 
+    protected BDD responsibilitiesEqual(int partition) {
+        return RESPONSIBILITY_MULTIPLICITY[PREDECESSOR][partition].buildEquals(RESPONSIBILITY_MULTIPLICITY[SUCCESSOR][partition]);
+    }
+
     protected BDD responsibilitiesEqual() {
-        return RESPONSIBILITY[PREDECESSOR].buildEquals(RESPONSIBILITY[SUCCESSOR]);
+        return this.streamPartitions(true)
+                .mapToObj(this::responsibilitiesEqual)
+                .collect(and());
     }
 
     protected BDD onlySystemInResponsibilitySet(int pos) {
-        return codeResponsibility(PARTITION_OF_SYSTEM_PLAYER, pos).biimpWith(tokenExists(PARTITION_OF_SYSTEM_PLAYER, pos))
-                .andWith(this.streamPartitions(false)
-                        .mapToObj(partition -> codeResponsibility(partition, pos).not())
-                        .collect(and()));
+        return responsibilityContainsSystem(pos).andWith(this.streamPartitions(false)
+                .mapToObj(partition -> codeResponsibility(partition, pos, 0))
+                .collect(and()));
     }
 
     protected BDD responsibilityContainsSystem(int pos) {
-        return codeResponsibility(PARTITION_OF_SYSTEM_PLAYER, pos).biimpWith(tokenExists(PARTITION_OF_SYSTEM_PLAYER, pos));
+        return tokenExists(PARTITION_OF_SYSTEM_PLAYER, pos).biimpWith(codeResponsibility(PARTITION_OF_SYSTEM_PLAYER, pos, 1));
     }
 
     protected BDD responsibilitySubsetMarking(int pos) {
-        return this.streamPartitions()
-                .mapToObj(partition -> codeResponsibility(partition, pos).impWith(tokenExists(partition, pos)))
+        return this.streamPartitions(true)
+                .mapToObj(partition -> LongStream.rangeClosed(0, this.getSolvingObject().getBoundOfPartition(partition))
+                        .mapToObj(multiplicityOfPlace -> PLACE_MULTIPLICITY[pos][partition].ithVar(multiplicityOfPlace)
+                                .impWith(codeResponsibilityAtMost(partition, pos, multiplicityOfPlace)))
+                        .collect(and()))
                 .collect(and());
     }
 
@@ -729,6 +794,7 @@ public class DistrEnvBDDGlobalSafetySolver extends DistrEnvBDDSolver<GlobalSafet
         /* only places that exist may be encoded */
         BDD ret = getOne();
         ret.andWith(onlyExistingPlacesInMarking(pos));
+        ret.andWith(unmarkedPlaceIffMultiplicityZero(pos));
         /*
          * only transitions in the postset of the system player may be in the commitment.
          * in top states there is no commitment set, thus there are no constraints on it.
@@ -765,10 +831,10 @@ public class DistrEnvBDDGlobalSafetySolver extends DistrEnvBDDSolver<GlobalSafet
                 .mapToObj(partition -> {
                     Optional<Place> place = getPlaceOfPartitionInMarking(marking, partition);
                     if (place.isPresent()) {
-                        return codePlace(place.get(), pos, partition);
+                        return codePlace(place.get(), pos, partition, marking.getToken(place.get()));
                     } else if (encodeMissingToken) {
                         assert !this.getSolvingObject().isConcurrencyPreserving();
-                        return notUsedToken(pos, partition);
+                        return notUsedToken(pos, partition).andWith(codePlaceMultiplicity(partition, pos, 0));
                     } else {
                         return getOne();
                     }
@@ -812,6 +878,58 @@ public class DistrEnvBDDGlobalSafetySolver extends DistrEnvBDDSolver<GlobalSafet
         return transition.getPreset().stream()
                 .map(place -> codePlace(place, pos, this.getGame().getPartition(place)))
                 .collect(and());
+    }
+
+    protected BDD codePlace(Place place, int pos, int partition, long multiplicity) {
+        return super.codePlace(place, pos, partition).andWith(codePlaceMultiplicity(partition, pos, multiplicity));
+    }
+
+    protected BDD codePlace(Place place, int pos, int partition, int multiplicity) {
+        return super.codePlace(place, pos, partition).andWith(codePlaceMultiplicity(partition, pos, multiplicity));
+    }
+
+    protected BDD codePlace(Place place, int pos, int partition, Token multiplicity) {
+        assert !multiplicity.isOmega();
+        return super.codePlace(place, pos, partition).andWith(codePlaceMultiplicity(partition, pos, multiplicity.getValue()));
+    }
+
+    protected BDD codePlaceMultiplicity(int partition, int pos, long multiplicity) {
+        return PLACE_MULTIPLICITY[pos][partition].ithVar(multiplicity);
+    }
+
+    protected BDD codeResponsibility(int partition, int pos, long multiplicity) {
+        return RESPONSIBILITY_MULTIPLICITY[pos][partition].ithVar(multiplicity);
+    }
+
+    protected BDD codeResponsibilityAtMost(int partition, int pos, long maxMultiplicity) {
+        return range(RESPONSIBILITY_MULTIPLICITY[pos][partition], 0, maxMultiplicity);
+    }
+
+    private BDD range(BDDDomain domain, long startInclusive, long endInclusive) {
+        return LongStream.rangeClosed(startInclusive, endInclusive)
+                .mapToObj(domain::ithVar)
+                .collect(or());
+    }
+
+    private BDD updateResponsibility(int partition, long preMin, long preMax, LongUnaryOperator post) {
+        return LongStream.rangeClosed(preMin, preMax)
+                .mapToObj(pre -> codeResponsibility(partition, PREDECESSOR, pre)
+                        .andWith(codeResponsibility(partition, SUCCESSOR, post.applyAsLong(pre))))
+                .collect(or());
+    }
+
+    private BDD updatePlaceMultiplicity(int partition, long preMin, long preMax, LongUnaryOperator post) {
+        return LongStream.rangeClosed(preMin, preMax)
+                .mapToObj(pre -> codePlaceMultiplicity(partition, PREDECESSOR, pre)
+                        .andWith(codePlaceMultiplicity(partition, SUCCESSOR, post.applyAsLong(pre))))
+                .collect(or());
+    }
+
+    private BDD updatePlace(Place prePlace, Place postPlace, int partition, long preMin, long preMax, LongUnaryOperator post) {
+        return LongStream.rangeClosed(preMin, preMax)
+                .mapToObj(pre -> codePlace(prePlace, PREDECESSOR, partition, pre)
+                        .andWith(codePlace(postPlace, SUCCESSOR, partition, post.applyAsLong(pre))))
+                .collect(or());
     }
 
     /* <overwrites for inheritance> */
@@ -984,21 +1102,25 @@ public class DistrEnvBDDGlobalSafetySolver extends DistrEnvBDDSolver<GlobalSafet
         return sj.toString();
     }
 
-    private Map<Integer, Byte> decodeResponsibility(byte[] dcs, int pos) {
+    private Map<Integer, Integer> decodeResponsibility(byte[] dcs, int pos) {
         return this.streamPartitions()
                 .boxed()
-                .collect(Collectors.toMap(Function.identity(), partition -> dcs[RESPONSIBILITY[pos].vars()[partition]]));
+                .collect(Collectors.toMap(Function.identity(), partition -> decodeInteger(dcs, RESPONSIBILITY_MULTIPLICITY[pos][partition])));
     }
 
     protected String decodeVertex(byte[] dcs, int pos) {
         boolean verbose = false;
-        Map<Integer, Byte> responsibility = decodeResponsibility(dcs, pos);
+        Map<Integer, Integer> responsibility = decodeResponsibility(dcs, pos);
         String systemPlayer = decodePlayer(dcs, pos, PARTITION_OF_SYSTEM_PLAYER);
-        assert responsibility.get(PARTITION_OF_SYSTEM_PLAYER) == 1 ^ systemPlayer.equals("-") : "System player " + systemPlayer + " is not in responsibility set " + responsibility;
+        //assert responsibility.get(PARTITION_OF_SYSTEM_PLAYER) == 1 ^ systemPlayer.equals("-") : "System player " + systemPlayer + " is not in responsibility set " + responsibility;
         String stringifiedEnvPlayerPlaces = IntStream.range(1, this.getSolvingObject().getMaxTokenCountInt())
                 .mapToObj(partition -> {
                     StringBuilder sb = new StringBuilder();
                     String player = decodePlayer(dcs, pos, partition);
+                    int multiplicity = decodeInteger(dcs, PLACE_MULTIPLICITY[pos][partition]);
+                    if (verbose || !player.equals("-")) {
+                        sb.append(multiplicity).append("x ");
+                    }
                     sb.append(player);
                     if (verbose || !player.equals("-")) {
                         sb.append(":").append(responsibility.get(partition));
@@ -1007,7 +1129,11 @@ public class DistrEnvBDDGlobalSafetySolver extends DistrEnvBDDSolver<GlobalSafet
                 })
                 .collect(Collectors.joining(", "));
         StringBuilder ret = new StringBuilder();
-        ret.append("(s: ").append(systemPlayer);
+        ret.append("(s: ");
+        if (verbose) {
+            ret.append(decodeInteger(dcs, PLACE_MULTIPLICITY[pos][PARTITION_OF_SYSTEM_PLAYER])).append("x ");
+        }
+        ret.append(systemPlayer);
         if (verbose) {
             ret.append(":").append(responsibility.get(PARTITION_OF_SYSTEM_PLAYER));
         }
