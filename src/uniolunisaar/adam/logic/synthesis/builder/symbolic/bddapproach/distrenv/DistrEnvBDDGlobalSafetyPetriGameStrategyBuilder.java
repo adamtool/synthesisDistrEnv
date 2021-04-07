@@ -131,9 +131,8 @@ public class DistrEnvBDDGlobalSafetyPetriGameStrategyBuilder {
                         }
                     }
                     for (Place postPlaceInStrategy : postCut) {
-                        if (postsetInGame.contains(lambda(postPlaceInStrategy))) {
-                            this.petriStrategy.createFlow(transitionInStrategy, postPlaceInStrategy);
-                        } else if (!preCut.contains(postPlaceInStrategy) && lambda(preCut).contains(lambda(postPlaceInStrategy))) {
+                        if (postsetInGame.contains(lambda(postPlaceInStrategy))
+                                || (!preCut.contains(postPlaceInStrategy) && lambda(preCut).contains(lambda(postPlaceInStrategy)))) {
                             Flow flow = this.petriStrategy.createFlow(transitionInStrategy, postPlaceInStrategy);
                             this.petriStrategy.setSpecial(flow);
                         }
