@@ -14,9 +14,9 @@ import java.util.stream.Collector;
 import java.util.stream.Collectors;
 import java.util.stream.LongStream;
 import java.util.stream.Stream;
-import uniol.apt.adt.pn.Node;
 import uniol.apt.adt.pn.Flow;
 import uniol.apt.adt.pn.Marking;
+import uniol.apt.adt.pn.Node;
 import uniol.apt.adt.pn.PetriNet;
 import uniol.apt.adt.pn.Place;
 import uniol.apt.adt.pn.Transition;
@@ -86,6 +86,8 @@ public class DistrEnvBDDGlobalSafetyPetriGameStrategyBuilder {
     /* from vertex in graph strategy to set of cuts in petri strategy */
     private final Map<BDDState, Set<Set<Place>>> cuts = new LinkedHashMap<>();
 
+    private final Set<Transition> strategyTransitionsWithNonUnfoldingFlows = new HashSet<>();
+
     public DistrEnvBDDGlobalSafetyPetriGameStrategyBuilder(DistrEnvBDDGlobalSafetySolver solver, BDDGraph graphStrategy) {
         this.solver = solver;
         this.graphStrategy = graphStrategy;
@@ -131,6 +133,7 @@ public class DistrEnvBDDGlobalSafetyPetriGameStrategyBuilder {
                         continue;
                     }
                     Transition transitionInStrategy = newStrategyTransition(transitionInGame);
+                    this.strategyTransitionsWithNonUnfoldingFlows.add(transitionInStrategy);
                     for (Place prePlaceInStrategy : preCut) {
                         if (presetInGame.contains(lambda(prePlaceInStrategy))) {
                             this.petriStrategy.createFlow(prePlaceInStrategy, transitionInStrategy);
@@ -140,6 +143,9 @@ public class DistrEnvBDDGlobalSafetyPetriGameStrategyBuilder {
                         }
                     }
                     for (Place postPlaceInStrategy : postCut) {
+                        if (!isConsideredPlaceInCausalPastOfNewTransition(postPlaceInStrategy, transitionInStrategy)) {
+                            continue;
+                        }
                         if (postsetInGame.contains(lambda(postPlaceInStrategy))
                                 || (!preCut.contains(postPlaceInStrategy) && lambda(preCut).contains(lambda(postPlaceInStrategy)))) {
                             Flow flow = this.petriStrategy.createFlow(transitionInStrategy, postPlaceInStrategy);
@@ -179,6 +185,48 @@ public class DistrEnvBDDGlobalSafetyPetriGameStrategyBuilder {
                 .filter(t -> t.getPreset().equals(fromReducedToTransition))
                 .filter(t -> t.getPostset().equals(toReducedToTransition))
                 .findAny();
+    }
+
+    /*
+     * A new transition T is in the midst of being created.
+     * It already has it's preset finalized.
+     * Currently the given strategy place P is considered for adding it to T's postset.
+     * If P's game place is not safe
+     * there are multiple strategy places associated with the graph game successor state we're currently looking at.
+     * For example consider the game place to be two bounded
+     * and with two tokens A and B.
+     * Token A can be in P, but token B has a different set of places.
+     * That is because T has a place for token A in it's preset.
+     * If T had a place of token B in it's postset,
+     * that place could get two tokens at the same time,
+     * A could be moved to a place made for B.
+     * That is not allowed, because the strategy must be safe.
+     *
+     * This attempt at a solution is incorrect!
+     * We look in the past of T.
+     * If P is part of the distant predecessors of T,
+     * then P is made for tokens moved by T.
+     * If on the other hand P is not a distant predecessor of T,
+     * there may still be a another place,
+     * that corresponds to the same place in the game.
+     * T must not have that place as a predecessor to stay safe.
+     */
+    private boolean isConsideredPlaceInCausalPastOfNewTransition(Place consideredPlaceInStrategy, Transition transitionWithCompletePreset) {
+        Set<Place> next = transitionWithCompletePreset.getPreset();
+        Set<Place> visited = new HashSet<>(next);
+        while (!next.isEmpty()) {
+            next = next.stream()
+                    .flatMap(place -> place.getPreset().stream())
+                    .filter(transition -> !this.strategyTransitionsWithNonUnfoldingFlows.contains(transition))
+                    .flatMap(transition -> transition.getPreset().stream())
+                    .filter(place -> !visited.contains(place))
+                    .collect(Collectors.toSet());
+            if (next.stream().anyMatch(consideredPlaceInStrategy::equals)) {
+                return true;
+            }
+            visited.addAll(next);
+        }
+        return false;
     }
 
     private void onNewVertex(BDDState predecessor, BDDState successor) {
