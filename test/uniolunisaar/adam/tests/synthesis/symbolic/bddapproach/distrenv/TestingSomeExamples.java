@@ -17,19 +17,14 @@ import java.util.stream.StreamSupport;
 import static org.testng.Assert.*;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
-import uniol.apt.adt.exception.NoSuchNodeException;
 import uniol.apt.adt.pn.Marking;
 import uniol.apt.adt.pn.Place;
 import uniol.apt.adt.pn.Transition;
-import uniol.apt.adt.ts.TransitionSystem;
 import uniol.apt.analysis.coverability.CoverabilityGraph;
 import uniol.apt.analysis.coverability.CoverabilityGraphEdge;
 import uniol.apt.analysis.coverability.CoverabilityGraphNode;
-import uniol.apt.analysis.exception.UnboundedException;
-import uniol.apt.analysis.isomorphism.IsomorphismLogic;
 import uniol.apt.io.parser.ParseException;
 import uniolunisaar.adam.ds.graph.synthesis.twoplayergame.symbolic.bddapproach.BDDGraph;
-import uniolunisaar.adam.ds.objectives.Condition;
 import uniolunisaar.adam.ds.synthesis.pgwt.PetriGameWithTransits;
 import uniolunisaar.adam.ds.synthesis.solver.symbolic.bddapproach.distrenv.DistrEnvBDDSolverOptions;
 import uniolunisaar.adam.ds.synthesis.solver.symbolic.bddapproach.distrenv.DistrEnvBDDSolvingObject;
@@ -40,12 +35,10 @@ import uniolunisaar.adam.exceptions.synthesis.pgwt.NoStrategyExistentException;
 import uniolunisaar.adam.exceptions.synthesis.pgwt.NoSuitableDistributionFoundException;
 import uniolunisaar.adam.exceptions.synthesis.pgwt.NotSupportedGameException;
 import uniolunisaar.adam.exceptions.synthesis.pgwt.SolvingException;
-import uniolunisaar.adam.logic.synthesis.builder.pgwt.symbolic.bddapproach.BDDPetriGameStrategyBuilder;
 import uniolunisaar.adam.logic.synthesis.builder.symbolic.bddapproach.distrenv.DistrEnvBDDGlobalSafetyPetriGameStrategyBuilder;
 import uniolunisaar.adam.logic.synthesis.builder.twoplayergame.symbolic.bddapproach.BDDGraphAndGStrategyBuilder;
 import uniolunisaar.adam.logic.synthesis.pgwt.calculators.CalculatorIDs;
 import uniolunisaar.adam.logic.synthesis.pgwt.calculators.ConcurrencyPreservingGamesCalculator;
-import uniolunisaar.adam.logic.synthesis.solver.symbolic.bddapproach.distrenv.DistrEnvBDDSolver;
 import uniolunisaar.adam.logic.synthesis.solver.symbolic.bddapproach.distrenv.DistrEnvBDDSolverFactory;
 import uniolunisaar.adam.logic.synthesis.solver.symbolic.bddapproach.distrenv.safety.DistrEnvBDDGlobalSafetySolver;
 import uniolunisaar.adam.tools.Logger;
@@ -98,15 +91,18 @@ public class TestingSomeExamples {
     private final static Object[] envSkipsSys = { "forallsafety/testingNets/envSkipsSys.apt", ENV, AUTO_PARTITION };
     private final static Object[] infiniteSystemTrysToAvoidEnvUseBadPlace = { "forallsafety/testingNets/infiniteSystemTrysToAvoidEnvUseBadPlace.apt", ENV, AUTO_PARTITION };
     private final static Object[] testNotStartingMcut = { "forallsafety/tests/testNotStartingMcut.apt", SYS, AUTO_PARTITION };
-    private final static Object[] accessor = { "~/work/nets/paper/accessor.apt", SYS, PARTITIONED_IN_FILE };
-    private final static Object[] chasing = { "~/work/nets/paper/chasing.apt", SYS, PARTITIONED_IN_FILE };
-    private final static Object[] decision = { "~/work/nets/paper/decision.apt", PROBABLY_SYS, PARTITIONED_IN_FILE };
-    private final static Object[] different_choice = { "~/work/nets/different_choice.apt", ENV, PARTITIONED_IN_FILE };
-    private final static Object[] sysChooseNoSysEnabled = { "~/work/nets/sysChooseNoSysEnabled.apt", SYS, PARTITIONED_IN_FILE };
-    private final static Object[] systemCanWaitForever = { "~/work/nets/systemCanWaitForever.apt", SYS, AUTO_PARTITION };
-    private final static Object[] forkJoinInterrupt = { "~/work/nets/forkJoinInterrupt.apt", ENV, PARTITIONED_IN_FILE };
-    private final static Object[] assassin = { "~/work/nets/assassin.apt", ENV, PARTITIONED_IN_FILE };
-    private final static Object[] isolatedEnvironmentsSingleUse = { "~/work/nets/isolatedEnvironmentsSingleUse.apt", SYS, AUTO_PARTITION };
+    private final static Object[] accessor = { "forallsafety/lukas-panneke/accessor.apt", SYS, PARTITIONED_IN_FILE };
+    private final static Object[] chasing = { "forallsafety/lukas-panneke/chasing.apt", SYS, PARTITIONED_IN_FILE };
+    private final static Object[] decision = { "forallsafety/lukas-panneke/decision.apt", PROBABLY_SYS, PARTITIONED_IN_FILE };
+    private final static Object[] different_choice = { "forallsafety/lukas-panneke/different_choice.apt", ENV, PARTITIONED_IN_FILE };
+    private final static Object[] systemDisappears = { "forallsafety/lukas-panneke/systemDisappears.apt", SYS, PARTITIONED_IN_FILE };
+    private final static Object[] systemCanWaitForever = { "forallsafety/lukas-panneke/systemCanWaitForever.apt", SYS, AUTO_PARTITION };
+    private final static Object[] forkJoinInterrupt = { "forallsafety/lukas-panneke/forkJoinInterrupt.apt", ENV, PARTITIONED_IN_FILE };
+    private final static Object[] assassin = { "forallsafety/lukas-panneke/assassin.apt", ENV, PARTITIONED_IN_FILE };
+    private final static Object[] isolatedEnvironmentsSingleUse = { "forallsafety/lukas-panneke/isolatedEnvironmentsSingleUse.apt", SYS, AUTO_PARTITION };
+    private final static Object[] twobounded = { "forallsafety/lukas-panneke/twobounded.apt", ENV, AUTO_PARTITION };
+    private final static Object[] unboundedBlowsUpPetriStrategy1 = { "forallsafety/lukas-panneke/unboundedBlowsUpPetriStrategy-1.apt", SYS, AUTO_PARTITION };
+    private final static Object[] unboundedBlowsUpPetriStrategy2 = { "forallsafety/lukas-panneke/unboundedBlowsUpPetriStrategy-2.apt", SYS, PARTITIONED_IN_FILE };
 
     @DataProvider
     private static Object[][] concurrencyPreservingGames() {
@@ -154,9 +150,12 @@ public class TestingSomeExamples {
                 minimal, // the underlying net is cp
                 minimalNotFinishingEnv,
                 testNotStartingMcut,
-                sysChooseNoSysEnabled,
+                systemDisappears,
                 forkJoinInterrupt,
-                assassin
+                assassin,
+                twobounded,
+                unboundedBlowsUpPetriStrategy1,
+                unboundedBlowsUpPetriStrategy2,
         };
     }
 
@@ -199,11 +198,14 @@ public class TestingSomeExamples {
                 chasing,
                 decision,
                 different_choice,
-                sysChooseNoSysEnabled,
+                systemDisappears,
                 systemCanWaitForever,
                 forkJoinInterrupt,
                 assassin,
                 isolatedEnvironmentsSingleUse,
+                twobounded,
+                unboundedBlowsUpPetriStrategy1,
+                unboundedBlowsUpPetriStrategy2,
         };
     }
 
@@ -225,7 +227,8 @@ public class TestingSomeExamples {
     @DataProvider
     private static Object[][] specific() {
         return varargs(
-                minus(all(), slow())
+                unboundedBlowsUpPetriStrategy1,
+                unboundedBlowsUpPetriStrategy2
         );
     }
 
@@ -277,8 +280,8 @@ public class TestingSomeExamples {
         Logger.getInstance().setVerbose(true);
     }
 
-    private static final String inputDir = "/home/lukas/work/adam/github/synthesisDistrEnv/dependencies/examples/synthesis/";
-    private static final String outputDir = "/home/lukas/tmp/work/";
+    private static final String inputDir = System.getProperty("examplesfolder") + "/";
+    private static final String outputDir = System.getProperty("testoutputfolder") + "/";
 
     @Test(dataProvider = "all")
     public static void existsWinningStrategyTest(String fileName, boolean existsWinningStrategy, List<Set<String>> partition) throws Exception {
@@ -462,50 +465,15 @@ public class TestingSomeExamples {
         }
     }
 
-    @Test(dataProvider = "specific")
-    public static void petriStrategyBuildersIsomorphic(String fileName, boolean existsWinningStrategy, List<Set<String>> partition) throws Exception {
-        PetriGameWithTransits game = game(fileName, partition);
-        DistrEnvBDDGlobalSafetySolver solver = (DistrEnvBDDGlobalSafetySolver) DistrEnvBDDSolverFactory.getInstance()
-                .getSolver(game, new DistrEnvBDDSolverOptions(false, false));
-        solver.initialize();
-        try {
-            PetriGameWithTransits manuel;
-            try {
-                manuel = BDDPetriGameStrategyBuilder.getInstance().builtStrategy(solver, solver.getGraphStrategy());
-            } catch (NoSuchNodeException e) {
-                e.printStackTrace();
-                return;
-            }
-            PetriGameWithTransits lukas = new DistrEnvBDDGlobalSafetyPetriGameStrategyBuilder(solver, solver.getGraphStrategy()).build();
-            PGTools.savePG2PDF(outputDir + justFileName(fileName) + "_petri_strategy_manuel", manuel, false);
-            PGTools.savePG2PDF(outputDir + justFileName(fileName) + "_petri_strategy_lukas", lukas, false);
-            Thread.sleep(100);
-            TransitionSystem manuelLts;
-            try {
-                manuelLts = CoverabilityGraph.get(manuel).toReachabilityLTS();
-            } catch (UnboundedException e) {
-                e.printStackTrace();
-                return;
-            }
-            IsomorphismLogic isomorphismLogic = new IsomorphismLogic(
-                    CoverabilityGraph.get(lukas).toReachabilityLTS(),
-                    manuelLts,
-                    false
-            );
-            assertTrue(isomorphismLogic.isIsomorphic());
-        } catch (NoStrategyExistentException e) {
-            if (existsWinningStrategy) {
-                fail();
-            }
-            return;
-        }
-        if (!existsWinningStrategy) {
-            fail();
+    @Test(dataProvider = "all")
+    public static void petriStrategySafe(String fileName, boolean existsWinningStrategy, List<Set<String>> partition) throws Exception {
+        if (existsWinningStrategy) {
+            assertTrue(solver(fileName, partition).getStrategy().getBounded().isSafe(), "Petri game strategy is not safe");
         }
     }
 
-    private static DistrEnvBDDSolver<? extends Condition<?>> solver(String fileName, List<Set<String>> partition) throws SolvingException, CouldNotFindSuitableConditionException, IOException, ParseException {
-        return DistrEnvBDDSolverFactory.getInstance()
+    private static DistrEnvBDDGlobalSafetySolver solver(String fileName, List<Set<String>> partition) throws SolvingException, CouldNotFindSuitableConditionException, IOException, ParseException {
+        return (DistrEnvBDDGlobalSafetySolver) DistrEnvBDDSolverFactory.getInstance()
                 .getSolver(game(fileName, partition), new DistrEnvBDDSolverOptions(false, false));
     }
 

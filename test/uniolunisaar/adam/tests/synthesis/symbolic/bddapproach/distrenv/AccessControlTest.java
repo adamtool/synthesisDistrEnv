@@ -24,7 +24,7 @@ public class AccessControlTest {
     @Test
     private void is_generator_correct_for_two_authenticators() throws NotSupportedGameException, CouldNotCalculateException, ParseException, IOException, UnboundedException, RenderException {
         PetriGameWithTransits generated = AccessControlGenerator.generate(2);
-        PetriGameWithTransits handmade = PGTools.getPetriGame("/home/lukas/work/nets/accessor.apt", false, false);
+        PetriGameWithTransits handmade = PGTools.getPetriGame(System.getProperty("examplesfolder") + "/forallsafety/lukas-panneke/accessor.apt", false, false);
         IsomorphismLogic isomorphism = new IsomorphismLogic(generated.getReachabilityGraph().toReachabilityLTS(), handmade.getReachabilityGraph().toReachabilityLTS(), false);
         assertTrue(isomorphism.isIsomorphic());
     }
@@ -39,7 +39,7 @@ public class AccessControlTest {
         return end - start;
     }
 
-    @Test
+    @Test(timeOut = 180_000)  // 3 minutes
     private void test_speed_for_increasing_authenticators() throws CouldNotFindSuitableConditionException, CalculationInterruptedException, SolvingException {
         long duration_millis = 0;
         for (int i = 1; duration_millis < 60_000; i++) {
