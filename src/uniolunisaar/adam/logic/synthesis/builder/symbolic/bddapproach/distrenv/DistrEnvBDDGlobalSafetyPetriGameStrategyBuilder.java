@@ -27,6 +27,7 @@ import uniolunisaar.adam.ds.petrinet.PetriNetExtensionHandler;
 import uniolunisaar.adam.ds.synthesis.pgwt.PetriGameWithTransits;
 import uniolunisaar.adam.ds.synthesis.solver.symbolic.bddapproach.distrenv.Multiset;
 import uniolunisaar.adam.logic.synthesis.solver.symbolic.bddapproach.distrenv.safety.DistrEnvBDDGlobalSafetySolver;
+import uniolunisaar.adam.tools.Logger;
 import uniolunisaar.adam.util.symbolic.bddapproach.BDDTools;
 
 /**
@@ -90,6 +91,10 @@ public class DistrEnvBDDGlobalSafetyPetriGameStrategyBuilder {
         this.graphStrategy = graphStrategy;
         this.game = this.solver.getGame();
         this.petriStrategy = new PetriGameWithTransits("Winning strategy of the system players of the game '" + solver.getGame().getName() + "'.");
+
+        if (!solver.getGame().getBounded().isSafe()) {
+            Logger.getInstance().addWarning("The petri game strategy for a unsafe petri game may be incorrect!");
+        }
     }
 
     public PetriGameWithTransits build() {
