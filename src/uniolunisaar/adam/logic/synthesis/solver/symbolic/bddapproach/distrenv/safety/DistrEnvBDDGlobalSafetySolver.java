@@ -4,7 +4,6 @@ import java.math.BigInteger;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -34,13 +33,9 @@ import uniolunisaar.adam.exceptions.CalculationInterruptedException;
 import uniolunisaar.adam.exceptions.synthesis.pgwt.NoStrategyExistentException;
 import uniolunisaar.adam.logic.synthesis.builder.symbolic.bddapproach.distrenv.DistrEnvBDDGlobalSafetyPetriGameStrategyBuilder;
 import uniolunisaar.adam.logic.synthesis.builder.twoplayergame.symbolic.bddapproach.BDDGraphAndGStrategyBuilder;
-import uniolunisaar.adam.logic.synthesis.pgwt.calculators.CalculatorIDs;
-import uniolunisaar.adam.logic.synthesis.pgwt.calculators.ConcurrencyPreservingGamesCalculator;
 import uniolunisaar.adam.logic.synthesis.solver.symbolic.bddapproach.BDDSolver;
 import uniolunisaar.adam.logic.synthesis.solver.symbolic.bddapproach.distrenv.DistrEnvBDDSolver;
-import uniolunisaar.adam.logic.synthesis.solver.symbolic.bddapproach.distrenv.DistrEnvBDDSolverFactory;
 import uniolunisaar.adam.tools.Logger;
-import uniolunisaar.adam.util.PGTools;
 import uniolunisaar.adam.util.benchmarks.synthesis.Benchmarks;
 import uniolunisaar.adam.util.symbolic.bddapproach.BDDTools;
 
@@ -205,6 +200,11 @@ public class DistrEnvBDDGlobalSafetySolver extends DistrEnvBDDSolver<GlobalSafet
                 PLACES[pos][partition] = this.getFactory().extDomain(
                         this.getSolvingObject().getDevidedPlaces()[partition].size()
                                 + (this.getSolvingObject().isConcurrencyPreserving() ? 0 : 1));
+                /*
+                 * TODO don't create these variables if the game is safe,
+                 *  because then the multiplicity is 0 iff the partition is unmarked
+                 *  and 1 iff the partition is marked.
+                 */
                 PLACE_MULTIPLICITY[pos][partition] = this.getFactory().extDomain(this.getSolvingObject().getBoundOfPartition(partition) + 1);
                 RESPONSIBILITY_MULTIPLICITY[pos][partition] = this.getFactory().extDomain(this.getSolvingObject().getBoundOfPartition(partition) + 1);
             }
@@ -212,7 +212,7 @@ public class DistrEnvBDDGlobalSafetySolver extends DistrEnvBDDSolver<GlobalSafet
             TRANSITIONS[pos] = this.getFactory().extDomain(BigInteger.TWO.pow(this.getSolvingObject().getSystemTransitions().size()));
             TOP[pos] = this.getFactory().extDomain(2);
         }
-        setDCSLength(getFactory().varNum() / 2); // TODO what is this?
+        setDCSLength(getFactory().varNum() / 2);
     }
 
     @Override
