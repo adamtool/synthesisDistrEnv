@@ -10,8 +10,11 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Queue;
 import java.util.Set;
+import java.util.stream.Collector;
 import java.util.stream.Collectors;
-import uniol.apt.adt.Node;
+import java.util.stream.LongStream;
+import java.util.stream.Stream;
+import uniol.apt.adt.pn.Node;
 import uniol.apt.adt.pn.Flow;
 import uniol.apt.adt.pn.Marking;
 import uniol.apt.adt.pn.PetriNet;
@@ -22,7 +25,9 @@ import uniolunisaar.adam.ds.graph.synthesis.twoplayergame.symbolic.bddapproach.B
 import uniolunisaar.adam.ds.graph.synthesis.twoplayergame.symbolic.bddapproach.BDDState;
 import uniolunisaar.adam.ds.petrinet.PetriNetExtensionHandler;
 import uniolunisaar.adam.ds.synthesis.pgwt.PetriGameWithTransits;
+import uniolunisaar.adam.ds.synthesis.solver.symbolic.bddapproach.distrenv.Multiset;
 import uniolunisaar.adam.logic.synthesis.solver.symbolic.bddapproach.distrenv.safety.DistrEnvBDDGlobalSafetySolver;
+import uniolunisaar.adam.tools.Logger;
 import uniolunisaar.adam.util.symbolic.bddapproach.BDDTools;
 
 /**
@@ -86,6 +91,10 @@ public class DistrEnvBDDGlobalSafetyPetriGameStrategyBuilder {
         this.graphStrategy = graphStrategy;
         this.game = this.solver.getGame();
         this.petriStrategy = new PetriGameWithTransits("Winning strategy of the system players of the game '" + solver.getGame().getName() + "'.");
+
+        if (!solver.getGame().getBounded().isSafe()) {
+            Logger.getInstance().addWarning("The petri game strategy for a unsafe petri game may be incorrect!");
+        }
     }
 
     public PetriGameWithTransits build() {
@@ -201,7 +210,7 @@ public class DistrEnvBDDGlobalSafetyPetriGameStrategyBuilder {
                                 .findAny()
                                 .orElseGet(() -> {
                                     Transition t = newStrategyTransition(transitionInGame);
-                                    //System.out.println(t.getId() + " was created for " + bddStateToString(predecessor) + " -> " + bddStateToString(successor) + ", " + transitionInGame + ", " + cut + ", " + subCut);
+                                    //System.out.println(t.getId() + " was created for " + bddStateToString(predecessor) + " -> " + bddStateToString(successor) + ", " + transitionInGame.getId() + ", " + nodesToString(cut) + ", " + nodesToString(subCut));
                                     for (Place prePlaceInStrategy : subCut) {
                                         this.petriStrategy.createFlow(prePlaceInStrategy, t);
                                     }
@@ -210,7 +219,7 @@ public class DistrEnvBDDGlobalSafetyPetriGameStrategyBuilder {
                                     }
                                     return t;
                                 });
-                        Set<Place> successorCut = markingToSet(setToMarking(this.petriStrategy, cut).fireTransitions(transitionInStrategy));
+                        Set<Place> successorCut = fire(cut, transitionInStrategy);
                         this.cuts.computeIfAbsent(successor, state -> new HashSet<>()).add(successorCut);
                     }
                     /*
@@ -227,10 +236,10 @@ public class DistrEnvBDDGlobalSafetyPetriGameStrategyBuilder {
         return this.lambdaPlaces.get(placeInStrategy);
     }
 
-    public Set<Place> lambda(Collection<Place> placesInStrategy) {
+    public Multiset<Place> lambda(Collection<Place> placesInStrategy) {
         return placesInStrategy.stream()
                 .map(this::lambda)
-                .collect(Collectors.toSet());
+                .collect(Multiset.collect());
     }
 
     public Transition lambda(Transition placeInStrategy) {
@@ -238,12 +247,14 @@ public class DistrEnvBDDGlobalSafetyPetriGameStrategyBuilder {
     }
 
     public Marking lambda(Marking marking) {
-        return setToMarking(this.game, lambda(markingToSet(marking)));
+        return streamMarking(marking)
+                .map(this::lambda)
+                .collect(collectMarking(this.game));
     }
 
     private Set<Place> initialCut() {
         Marking initialMarking = this.game.getInitialMarking();
-        return markingToSet(initialMarking).stream()
+        return streamMarking(initialMarking)
                 .map(this::newStrategyPlace)
                 .peek(placeInStrategy -> placeInStrategy.setInitialToken(1))
                 .collect(Collectors.toSet());
@@ -280,14 +291,24 @@ public class DistrEnvBDDGlobalSafetyPetriGameStrategyBuilder {
         return newTransitionInStrategy;
     }
 
-    public Set<Place> markingToSet(Marking marking) {
-        return marking.getNet().getPlaces().stream()
-                .filter(place -> marking.getToken(place).getValue() >= 1)
-                .collect(Collectors.toSet());
+    private Set<Place> fire(Set<Place> preCutInStrategy, Transition transitionInStrategy) {
+        Marking preMarking = preCutInStrategy.stream().collect(collectMarking(this.petriStrategy));
+        Marking postMarking = preMarking.fireTransitions(transitionInStrategy);
+        return streamMarking(postMarking).collect(Collectors.toSet());
     }
 
-    public Marking setToMarking(PetriNet net, Set<Place> places) {
-        return new Marking(net, places.stream().collect(Collectors.toMap(Node::getId, place -> 1)));
+    private static Stream<Place> streamMarking(Marking marking) {
+        return marking.getNet().getPlaces().stream()
+                .peek(place -> {
+                    assert !marking.getToken(place).isOmega();
+                })
+                .flatMap(place -> LongStream.rangeClosed(1, marking.getToken(place).getValue()).mapToObj(i -> place));
+    }
+
+    private static Collector<Place, ?, Marking> collectMarking(PetriNet net) {
+        return Collectors.collectingAndThen(
+                Collectors.toMap(Node::getId, (Place place) -> 1, Integer::sum),
+                (Map<String, Integer> map) -> new Marking(net, map));
     }
 
     private String cutsToString() {
@@ -297,6 +318,10 @@ public class DistrEnvBDDGlobalSafetyPetriGameStrategyBuilder {
 
     private String bddStateToString(BDDState state) {
         return BDDTools.getDecodedDecisionSets(state.getState(), this.solver).replace("-> (successor not defined)", "").replace("\n", "");
+    }
+
+    private String nodesToString(Collection<? extends Node> nodes) {
+        return nodes.stream().map(Node::getId).collect(Collectors.joining(", ", "{", "}"));
     }
 
     private class Edge {
