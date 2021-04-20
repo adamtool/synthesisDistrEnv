@@ -16,13 +16,13 @@ This step supports safe petri games.
 Integration:
 ------------
 This modules can be used as separate library
-and is integrated in the the [webinterface]()https://github.com/adamtool/webinterface)
+and is integrated in the the [webinterface](https://github.com/adamtool/webinterface)
 
 Related Publications:
 ---------------------
 The theoretical background for finding a petri game strategy for a petri game with one system and a bounded number of environment players:
 - _Bernd Finkbeiner, Paul Gölz:_
-  [Synthesis in Distributed Environments](10.4230/LIPIcs.FSTTCS.2017.28).
+  [Synthesis in Distributed Environments](https://doi.org/10.4230/LIPIcs.FSTTCS.2017.28).
 
 ------------------------------------
 
