@@ -41,9 +41,9 @@ public class DistrEnvBDDSolverFactory extends LLSolverFactory<DistrEnvBDDSolverO
     }
 
     @Override
-    protected <W extends Condition<W>> DistrEnvBDDSolvingObject<W> createSolvingObject(PetriGameWithTransits game, W winCon) throws NotSupportedGameException {
+    protected <W extends Condition<W>> DistrEnvBDDSolvingObject<W> createSolvingObject(PetriGameWithTransits game, W winCon, DistrEnvBDDSolverOptions options) throws NotSupportedGameException {
         try {
-            return new DistrEnvBDDSolvingObject<>(game, winCon);
+            return new DistrEnvBDDSolvingObject<>(game, winCon, options.isSkipTests());
         } catch (NetNotSafeException | NoSuitableDistributionFoundException | InvalidPartitionException ex) {
             throw new NotSupportedGameException("Could not create solving object.", ex);
         }
@@ -89,7 +89,7 @@ public class DistrEnvBDDSolverFactory extends LLSolverFactory<DistrEnvBDDSolverO
 
     protected DistrEnvBDDSolver<GlobalSafety> getGlobalSafetySolver(PetriGameWithTransits game, GlobalSafety con, DistrEnvBDDSolverOptions options) throws SolvingException {
         try {
-            return DistrEnvBDDSafetySolverFactory.getInstance().createDistrEnvBDDGlobalSafetySolver(createSolvingObject(game, con), options);
+            return DistrEnvBDDSafetySolverFactory.getInstance().createDistrEnvBDDGlobalSafetySolver(createSolvingObject(game, con, options), options);
         } catch (NetNotSafeException ex) {
             throw new NotSupportedGameException(ex);
         }
@@ -107,7 +107,7 @@ public class DistrEnvBDDSolverFactory extends LLSolverFactory<DistrEnvBDDSolverO
                 .map(place -> new Marking(game, Map.of(place.getId(), 1)))
                 .forEach(game::addFinalMarking);
         try {
-            return DistrEnvBDDSafetySolverFactory.getInstance().createDistrEnvBDDGlobalSafetySolver(createSolvingObject(game, new GlobalSafety()), options);
+            return DistrEnvBDDSafetySolverFactory.getInstance().createDistrEnvBDDGlobalSafetySolver(createSolvingObject(game, new GlobalSafety(), options), options);
         } catch (NetNotSafeException ex) {
             throw new NotSupportedGameException(ex);
         }
